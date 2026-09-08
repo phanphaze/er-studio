@@ -1,7 +1,10 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useImperativeHandle, useRef, type Ref } from "react";
+import { exportDiagramPdf } from "@/lib/export/diagramPdf";
 import {
   ReactFlow,
+  useReactFlow,
+  getNodesBounds,
   Background,
   Controls,
   MiniMap,
@@ -26,7 +29,34 @@ const nodeTypes = {
   isa: ISANode,
 };
 const edgeTypes = { crow: CrowsFootEdge, chen: ChenEdge };
-function Canvas() {
+export interface CanvasActions {
+  exportPdf: () => Promise<void>;
+}
+function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
+  const flow = useReactFlow();
+  const root = useRef<HTMLDivElement>(null);
+  useImperativeHandle(actionsRef, () => ({
+    exportPdf: async () => {
+      const nodes = flow.getNodes().map((node) => {
+        const measured = flow.getInternalNode(node.id)?.measured;
+        return {
+          ...node,
+          width: measured?.width ?? node.measured?.width ?? 290,
+          height: measured?.height ?? node.measured?.height ?? 120,
+        };
+      });
+      if (!nodes.length) throw Error("Add an entity before exporting a PDF.");
+      const viewport = root.current?.querySelector<HTMLElement>(
+        ".react-flow__viewport",
+      );
+      if (!viewport) throw Error("Canvas is not ready. Please retry.");
+      await exportDiagramPdf(
+        viewport,
+        getNodesBounds(nodes),
+        useERStore.getState().graph.name,
+      );
+    },
+  }));
   const graph = useERStore((s) => s.graph);
   const notation = useERStore((s) => s.notation);
   const selection = useERStore((s) => s.selection);
@@ -154,24 +184,23 @@ function Canvas() {
     return { nodes, edges };
   }, [graph, notation, selection]);
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      colorMode="dark"
-      fitView
-      fitViewOptions={{ padding: 0.18, maxZoom: 0.9 }}
-      minZoom={0.2}
-      maxZoom={1.8}
-      snapToGrid
-      snapGrid={[20, 20]}
-      deleteKeyCode={null}
-      onNodeClick={(_, n) => {
-        if (n.type === "attribute") return;
-        useERStore
-          .getState()
-          .setSelection({
+    <div ref={root} className="flow-root">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        colorMode="dark"
+        fitView
+        fitViewOptions={{ padding: 0.18, maxZoom: 0.9 }}
+        minZoom={0.2}
+        maxZoom={1.8}
+        snapToGrid
+        snapGrid={[20, 20]}
+        deleteKeyCode={null}
+        onNodeClick={(_, n) => {
+          if (n.type === "attribute") return;
+          useERStore.getState().setSelection({
             kind:
               n.type === "entity"
                 ? "entity"
@@ -180,87 +209,88 @@ function Canvas() {
                   : "relationship",
             id: n.id,
           });
-      }}
-      onEdgeClick={(_, e) =>
-        useERStore
-          .getState()
-          .setSelection({
+        }}
+        onEdgeClick={(_, e) =>
+          useERStore.getState().setSelection({
             kind: "relationship",
             id: (e.data as ERLinkData)?.relationshipId ?? e.id,
           })
-      }
-      onPaneClick={() => useERStore.getState().setSelection(null)}
-      onNodeDragStart={() => useERStore.getState().beginTransaction()}
-      onNodeDrag={(_, n) =>
-        useERStore.getState().moveEntities([{ id: n.id, position: n.position }])
-      }
-      onNodeDragStop={(_, n) => {
-        useERStore
-          .getState()
-          .moveEntities([{ id: n.id, position: n.position }]);
-        useERStore.getState().endTransaction();
-      }}
-      onConnect={(c) => {
-        if (
-          c.source &&
-          c.target &&
-          graph.entities.some((e) => e.id === c.source) &&
-          graph.entities.some((e) => e.id === c.target)
-        )
-          useERStore.getState().addRelationship({
-            name: "relates_" + (graph.relationships.length + 1),
-            type: c.source === c.target ? "recursive" : "non-identifying",
-            cardinality: "1:N",
-            endpoints: [
-              {
-                entityId: c.source,
-                role: "source",
-                participation: { min: 1, max: 1 },
-                attributeId: c.sourceHandle?.startsWith("attr-out-")
-                  ? c.sourceHandle.slice(9)
-                  : undefined,
-              },
-              {
-                entityId: c.target,
-                role: "target",
-                participation: { min: 0, max: "*" },
-                attributeId: c.targetHandle?.startsWith("attr-in-")
-                  ? c.targetHandle.slice(8)
-                  : undefined,
-              },
-            ],
-            attributes: [],
-            onDelete: "RESTRICT",
-            onUpdate: "CASCADE",
-          });
-      }}
-    >
-      <Background
-        variant={BackgroundVariant.Dots}
-        gap={24}
-        size={1}
-        color="#303543"
-      />
-      <Controls showInteractive={false} />
-      <MiniMap
-        nodeColor={(n) =>
-          (n.data.entity as { color: string } | undefined)?.color ?? "#a78bfa"
         }
-        maskColor="rgba(10,12,17,.6)"
-        pannable
-        zoomable
-      />
-      <div className="canvas-caption">
-        <span className="canvas-chip">PUBLIC SCHEMA</span>
-        <span>Drag between handles to connect</span>
-      </div>
-    </ReactFlow>
+        onPaneClick={() => useERStore.getState().setSelection(null)}
+        onNodeDragStart={() => useERStore.getState().beginTransaction()}
+        onNodeDrag={(_, n) =>
+          useERStore
+            .getState()
+            .moveEntities([{ id: n.id, position: n.position }])
+        }
+        onNodeDragStop={(_, n) => {
+          useERStore
+            .getState()
+            .moveEntities([{ id: n.id, position: n.position }]);
+          useERStore.getState().endTransaction();
+        }}
+        onConnect={(c) => {
+          if (
+            c.source &&
+            c.target &&
+            graph.entities.some((e) => e.id === c.source) &&
+            graph.entities.some((e) => e.id === c.target)
+          )
+            useERStore.getState().addRelationship({
+              name: "relates_" + (graph.relationships.length + 1),
+              type: c.source === c.target ? "recursive" : "non-identifying",
+              cardinality: "1:N",
+              endpoints: [
+                {
+                  entityId: c.source,
+                  role: "source",
+                  participation: { min: 1, max: 1 },
+                  attributeId: c.sourceHandle?.startsWith("attr-out-")
+                    ? c.sourceHandle.slice(9)
+                    : undefined,
+                },
+                {
+                  entityId: c.target,
+                  role: "target",
+                  participation: { min: 0, max: "*" },
+                  attributeId: c.targetHandle?.startsWith("attr-in-")
+                    ? c.targetHandle.slice(8)
+                    : undefined,
+                },
+              ],
+              attributes: [],
+              onDelete: "RESTRICT",
+              onUpdate: "CASCADE",
+            });
+        }}
+      >
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={24}
+          size={1}
+          color="#303543"
+        />
+        <Controls showInteractive={false} />
+        <MiniMap
+          nodeColor={(n) =>
+            (n.data.entity as { color: string } | undefined)?.color ?? "#a78bfa"
+          }
+          maskColor="rgba(10,12,17,.6)"
+          pannable
+          zoomable
+        />
+        <div className="canvas-caption">
+          <span className="canvas-chip">PUBLIC SCHEMA</span>
+          <span>Drag between handles to connect</span>
+        </div>
+      </ReactFlow>
+    </div>
   );
 }
-export function ERCanvas() {
+export function ERCanvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
   return (
     <ReactFlowProvider>
-      <Canvas />
+      <Canvas actionsRef={actionsRef} />
     </ReactFlowProvider>
   );
 }

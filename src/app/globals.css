@@ -1224,3 +1224,337 @@ kbd {
   display: flex;
   color: #b9a5e7;
 }
+/* Resizable editor layout and persistent project navigation. */
+.flow-root {
+  width: 100%;
+  height: 100%;
+}
+.brand-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  white-space: nowrap;
+}
+.header-breadcrumb button {
+  border: 0;
+  background: none;
+  color: #a995d3;
+  padding: 7px 0;
+  cursor: pointer;
+}
+.header-breadcrumb button:hover {
+  text-decoration: underline;
+  color: #d9c7ff;
+}
+.header-breadcrumb strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.header-breadcrumb {
+  display: flex;
+  flex-shrink: 1;
+  min-width: 0;
+  gap: 9px;
+}
+.app-header {
+  gap: 24px;
+}
+.header-actions {
+  gap: 8px;
+}
+.save-state {
+  font-size: 11px;
+  color: #9ba6ba;
+  white-space: nowrap;
+}
+.workspace-body > .schema-sidebar {
+  width: var(--left-panel-width);
+  display: flex;
+  min-width: 0;
+}
+.inspector-shell {
+  width: var(--right-panel-width);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.inspector-shell .inspector {
+  width: 100%;
+  height: 100%;
+  border-left: 0;
+  position: static;
+  box-shadow: none;
+}
+.panel-divider {
+  width: 6px;
+  flex: 0 0 6px;
+  position: relative;
+  cursor: col-resize;
+  background: #242a35;
+  touch-action: none;
+  z-index: 12;
+  outline-offset: -2px;
+}
+.panel-divider:hover,
+.panel-divider:focus-visible {
+  background: #a88afa;
+}
+.panel-divider span {
+  position: absolute;
+  top: 45%;
+  height: 42px;
+  left: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: #6e7788;
+}
+.panel-divider-collapsed {
+  background: #343044;
+}
+.model-title {
+  gap: 12px;
+  padding: 0 15px;
+}
+.model-title-text {
+  flex: 1;
+  min-width: 0;
+}
+.project-title-input {
+  font-size: 20px;
+  width: 100%;
+  font-weight: 500;
+  padding: 2px 0;
+}
+.project-switcher {
+  border: 0;
+  background: none;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+}
+.project-switcher > div {
+  min-width: 0;
+}
+.project-switcher strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sidebar-new {
+  margin-bottom: 16px;
+}
+.section-toggle {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  justify-content: flex-start;
+  gap: 7px;
+}
+.section-toggle span {
+  margin-left: auto;
+}
+.section-toggle:hover {
+  color: #d0b7ff;
+}
+.project-browser {
+  flex: 1;
+  overflow: auto;
+  padding: 40px max(24px, 6vw);
+  background: radial-gradient(at top right, #25203455, transparent 55%);
+}
+.project-browser-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.project-browser-heading h1 {
+  font-size: 30px;
+}
+.project-browser-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.project-browser-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 28px 0;
+}
+.project-browser-tools input {
+  padding: 12px 14px;
+  background: #1c202b;
+  border: 1px solid #363e4d;
+  border-radius: 8px;
+  flex: 1;
+  max-width: 420px;
+  font-size: 14px;
+}
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 18px;
+}
+.project-card {
+  border: 1px solid #343a48;
+  background: #181e29;
+  text-align: left;
+  padding: 24px;
+  border-radius: 12px;
+  min-width: 0;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.project-card:hover {
+  background: #232336;
+  border-color: #9981cd;
+}
+.project-card .project-icon {
+  display: inline-flex;
+}
+.project-card h2 {
+  font-size: 18px;
+  margin: 20px 0 12px;
+  overflow-wrap: anywhere;
+}
+.project-card p {
+  font-size: 14px;
+  color: #a6b1c5;
+}
+.project-card small {
+  font-size: 12px;
+  color: #78879f;
+}
+.projects-empty {
+  grid-column: 1/-1;
+  text-align: center;
+  padding: 70px 20px;
+  color: #99a4ba;
+  border: 1px dashed #3d4353;
+  border-radius: 12px;
+}
+.projects-empty > svg {
+  margin: auto;
+}
+.projects-empty h2 {
+  font-size: 20px;
+  color: #d8dfee;
+}
+.projects-empty p {
+  font-size: 14px;
+  margin: 16px 0 25px;
+}
+.notice {
+  max-width: 90vw;
+  flex-wrap: wrap;
+  z-index: 60;
+}
+.inspector-shell .panel-tabs {
+  gap: 3px;
+  padding: 0 6px;
+}
+.inspector-shell .panel-tabs button {
+  min-width: 0;
+  flex: 1;
+  justify-content: center;
+}
+.inspector-shell .panel-tabs button svg {
+  flex-shrink: 0;
+}
+@media (max-width: 1200px) {
+  .save-state {
+    display: none;
+  }
+  .app-header {
+    gap: 15px;
+  }
+  .header-actions .button {
+    padding: 8px;
+  }
+  .header-breadcrumb strong {
+    max-width: 140px;
+  }
+}
+@media (max-width: 900px) {
+  .app-header {
+    height: auto;
+    min-height: 70px;
+    flex-wrap: wrap;
+    padding: 12px;
+    gap: 10px;
+  }
+  .header-breadcrumb {
+    display: flex;
+    flex: 1;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .workspace-body > .schema-sidebar {
+    max-width: 35vw;
+  }
+  .inspector-shell {
+    max-width: 40vw;
+  }
+  .project-browser-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .project-browser-tools {
+    flex-wrap: wrap;
+  }
+  .project-title-input {
+    font-size: 17px;
+  }
+}
+@media (max-width: 720px) {
+  .app-header .button span {
+    display: inline;
+  }
+  .header-actions .button {
+    font-size: 11px;
+    padding: 7px;
+  }
+  .header-actions > .button-icon {
+    width: 28px;
+  }
+  .workspace-body > .schema-sidebar {
+    padding: 12px 5px;
+    max-width: 42vw;
+  }
+  .inspector-shell {
+    max-width: 45vw;
+  }
+  .panel-divider {
+    width: 7px;
+    flex-basis: 7px;
+  }
+  .model-title .button {
+    z-index: auto;
+  }
+  .project-browser {
+    padding: 25px 18px;
+  }
+  .header-breadcrumb strong {
+    max-width: 140px;
+  }
+  .panel-tabs button svg {
+    display: none;
+  }
+  .workspace-toolbar {
+    overflow: auto;
+  }
+  .project-title-input {
+    font-size: 15px;
+  }
+  .project-browser-actions .button {
+    white-space: normal;
+  }
+}

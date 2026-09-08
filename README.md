@@ -12,7 +12,7 @@ npm test
 npm run build
 ```
 
-`npm run build` creates a static export in `out/`. Monaco's assets are copied from the locked local dependency into `public/monaco` by prebuild/predev; no third-party editor CDN is required.
+`npm run build` creates the Next.js static frontend in `out/` and stages a Worker-backed deployment in `dist/`. Monaco's assets are copied from the locked local dependency into `public/monaco` by prebuild/predev; no third-party editor CDN is required.
 
 ## Architecture
 
@@ -47,8 +47,22 @@ PostgreSQL does not support cross-table CHECK constraints. Total participation a
 - Undo/redo with Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z (or Ctrl+Y).
 - Save/open versioned JSON models using header controls. Open is undoable. Export executable SQL from the header or live SQL panel.
 
-Models live in memory until saved as JSON; there is no application database, autosave, collaboration or account system. The initial commerce graph is a clearly named editable example. This implementation is a tested foundation, not a claim of full production operational readiness or exhaustive ER notation conformance. Browser interaction and accessibility audits have not been performed.
+Models are explicitly saved to the project workspace database; JSON remains available as a portable backup. There is no autosave, collaboration or separate account system. The initial commerce graph is a clearly named editable example. This implementation is a tested foundation, not a claim of full production operational readiness or exhaustive ER notation conformance. Browser interaction and accessibility audits have not been performed.
 
 ## Verification
 
 Vitest covers document history, destructive graph edits, nested attribute duplication, deterministic compilation, weak composite keys, multivalued attributes, both ISA strategies, recursive references, invalid models and SQL identifier quoting. PGlite executes generated PostgreSQL DDL and checks CHECK/UNIQUE failures. TypeScript and Next.js production build are separate gates.
+
+## Project workspace and exports (update)
+
+Workspace in the breadcrumb and the sidebar project switcher open the project browser. Create a blank project, open an existing saved project, or import a JSON model as a new unsaved model. Save project writes the current AST to platform-backed D1 storage; saved projects persist across sessions. The project name above the canvas is editable. This is explicit save, not autosave. A dirty-state indicator, leave-page warning and save/discard/cancel flow protect unsaved edits. Stale writes return a revision conflict rather than overwriting another tab's changes; Save as new project preserves a separate copy.
+
+The owner-private Site perimeter protects this workspace. Projects belong to this Site; if the Site is shared later, its saved projects are shared with that audience. There is no separate per-project ACL.
+
+The Worker in `worker/index.ts` serves the prepared-query project API; `db/schema.ts` and checked-in Drizzle migrations own the D1 schema. The Next.js 15 frontend remains a static export. The build stages it under `dist/client`, bundles the Worker to `dist/server/index.js`, and includes logical bindings and migrations. Local `next dev` runs the editor; project API operations require the deployed Worker and DB (or a configured local Worker environment).
+
+Both sidebar sections now collapse. Drag either vertical separator to resize a panel, drag it to the edge to collapse, double-click to reset, or use the panel buttons to reopen. Focus a separator and use left/right arrows, Home (collapse), or End (reset). Panel widths are device-local UI preferences only.
+
+PDF exports capture the complete diagram at its current notation, independent of canvas pan/zoom, and fit it onto an A3 page with title and margins. The diagram is a bounded-resolution raster embedded in the PDF, not editable vector artwork. Very large diagrams may require zooming in the PDF. JSON backups and SQL export remain available.
+
+Additional integration tests execute the generated SQLite migration and project API queries, including revision conflicts, malformed input, separate projects and storage failures. Browser/PDF visual QA has not been performed.
