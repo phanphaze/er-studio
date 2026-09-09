@@ -1,5 +1,5 @@
 "use client";
-import { memo, useEffect } from "react";
+import { memo, useEffect, useLayoutEffect, useRef } from "react";
 import {
   Handle,
   NodeToolbar,
@@ -24,6 +24,8 @@ import {
   type RelationalColumn,
 } from "@/lib/ast/types";
 import { Button } from "@/components/ui/button";
+import { attributeRows } from "@/lib/ast/attributes";
+import { AttributeMenu } from "@/components/ui/attribute-menu";
 export type EntityFlowNode = Node<
   { entity: Entity; foreignColumns?: RelationalColumn[] },
   "entity"
@@ -34,6 +36,45 @@ export const EntityNode = memo(function EntityNode({
   selected,
 }: NodeProps<EntityFlowNode>) {
   const { entity } = data;
+  const rows = attributeRows(entity.attributes);
+  const root = useRef<HTMLDivElement>(null);
+  const previousTops = useRef(new Map<string, number>());
+  const dragged = useRef<string | null>(null);
+  const nodeWidth = Math.min(
+    680,
+    Math.max(
+      400,
+      ...rows.map((r) => r.attribute.name.length * 7 + 155 + r.depth * 15),
+      ...(data.foreignColumns ?? []).map((c) => c.name.length * 7 + 145),
+    ),
+  );
+  useLayoutEffect(() => {
+    const next = new Map<string, number>();
+    root.current
+      ?.querySelectorAll<HTMLElement>("[data-row-id]")
+      .forEach((el) => {
+        const key = el.dataset.rowId!;
+        const top = el.offsetTop;
+        next.set(key, top);
+        const before = previousTops.current.get(key);
+        if (
+          before !== undefined &&
+          before !== top &&
+          !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ) {
+          el.getAnimations().forEach((a) => a.cancel());
+          el.animate(
+            [
+              { transform: `translateY(${before - top}px)` },
+              { transform: "translateY(0)" },
+            ],
+            { duration: 160, easing: "cubic-bezier(.2,.8,.2,1)" },
+          );
+        }
+      });
+    previousTops.current = next;
+  }, [entity.attributes]);
+  const focus = useERStore((s) => s.attributeFocus);
   const notation = useERStore((s) => s.notation);
   const update = useERStore((s) => s.updateAttribute);
   const begin = useERStore((s) => s.beginTransaction);
@@ -41,11 +82,19 @@ export const EntityNode = memo(function EntityNode({
   const internals = useUpdateNodeInternals();
   useEffect(() => {
     internals(id);
+    const timer = setTimeout(() => internals(id), 180);
+    return () => clearTimeout(timer);
   }, [id, entity.attributes, data.foreignColumns, notation, internals]);
   return (
     <div
+      ref={root}
       className={`entity-node ${selected ? "is-selected" : ""} ${notation === "chen" ? "entity-chen" : ""} ${entity.type === "weak" ? "entity-weak" : ""}`}
-      style={{ "--entity-color": entity.color } as React.CSSProperties}
+      style={
+        {
+          "--entity-color": entity.color,
+          width: nodeWidth,
+        } as React.CSSProperties
+      }
     >
       <NodeToolbar
         isVisible={selected}
@@ -102,97 +151,189 @@ export const EntityNode = memo(function EntityNode({
         <span>FIELD</span>
         <span>TYPE</span>
       </div>
-      {entity.attributes.map((a, i) => (
-        <div
+      {rows.map(({ attribute: a, index: i, depth, parentId }) => (
+        <AttributeMenu
           key={a.id}
-          className={`attribute-row ${a.isDerived ? "derived" : ""}`}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            const from = e.dataTransfer.getData("application/er-attribute");
-            useERStore.getState().reorderAttribute(id, from, i);
-          }}
+          ownerId={id}
+          attributeId={a.id}
+          hasChildren={!!a.compositeChildren?.length}
         >
-          <button
-            className="attribute-grip nodrag"
-            draggable
-            aria-label={`Move ${a.name}; use arrow keys to reorder`}
-            onDragStart={(e) =>
-              e.dataTransfer.setData("application/er-attribute", a.id)
-            }
-            onKeyDown={(e) => {
-              if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-                e.preventDefault();
-                useERStore
-                  .getState()
-                  .reorderAttribute(
-                    id,
-                    a.id,
-                    i + (e.key === "ArrowUp" ? -1 : 1),
-                  );
-              }
+          <div
+            key={a.id}
+            data-row-id={a.id}
+            className={`attribute-row nodrag ${a.isDerived ? "derived" : ""} ${focus?.attributeId === a.id ? "focused-attribute-row" : ""}`}
+            style={{ paddingLeft: 4 + depth * 15 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              useERStore.getState().focusAttribute(id, a.id);
+            }}
+            onFocus={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget))
+                useERStore.getState().focusAttribute(id, a.id);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const from = dragged.current;
+              if (!from || from === a.id) return;
+              const source = rows.find((row) => row.attribute.id === from);
+              if (!source || source.parentId !== parentId) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              const mid = rect.top + rect.height / 2;
+              if (
+                (source.index < i && e.clientY < mid) ||
+                (source.index > i && e.clientY > mid)
+              )
+                return;
+              useERStore.getState().reorderAttribute(id, from, i);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const from = e.dataTransfer.getData("application/er-attribute");
+              e.stopPropagation();
+              const source = rows.find((row) => row.attribute.id === from);
+              if (source && source.parentId === parentId)
+                useERStore.getState().reorderAttribute(id, from, i);
             }}
           >
-            <GripVertical size={12} />
-          </button>
-          <span
-            className={`key-badge ${a.isPrimaryKey || a.isPartialKey ? "pk" : ""}`}
-            title={
-              a.isPrimaryKey
-                ? "Primary key"
-                : a.isPartialKey
-                  ? "Partial key"
-                  : a.isDerived
-                    ? "Derived"
-                    : a.isMultivalued
-                      ? "Multivalued"
-                      : "Attribute"
-            }
-          >
-            {a.isPrimaryKey || a.isPartialKey ? (
-              <KeyRound size={12} />
-            ) : a.isDerived ? (
-              "ƒ"
-            ) : a.isMultivalued ? (
-              "≋"
+            <button
+              className="attribute-grip nodrag"
+              draggable
+              aria-label={`Move ${a.name}; use arrow keys to reorder`}
+              onDragStart={(e) => {
+                dragged.current = a.id;
+                e.dataTransfer.setData("application/er-attribute", a.id);
+                e.dataTransfer.effectAllowed = "move";
+                useERStore.getState().endTransaction();
+                begin();
+              }}
+              onDragEnd={() => {
+                dragged.current = null;
+                end();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                  e.preventDefault();
+                  useERStore
+                    .getState()
+                    .reorderAttribute(
+                      id,
+                      a.id,
+                      i + (e.key === "ArrowUp" ? -1 : 1),
+                    );
+                }
+              }}
+            >
+              <GripVertical size={12} />
+            </button>
+            <span
+              className={`key-badge ${a.isPrimaryKey || a.isPartialKey ? "pk" : ""}`}
+              title={
+                a.isPrimaryKey
+                  ? "Primary key"
+                  : a.isPartialKey
+                    ? "Partial key"
+                    : a.isDerived
+                      ? "Derived"
+                      : a.isMultivalued
+                        ? "Multivalued"
+                        : "Attribute"
+              }
+            >
+              {a.isPrimaryKey || a.isPartialKey ? (
+                <KeyRound size={12} />
+              ) : a.isDerived ? (
+                "ƒ"
+              ) : a.isMultivalued ? (
+                "≋"
+              ) : (
+                "·"
+              )}
+            </span>
+            <textarea
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                }
+              }}
+              rows={Math.max(
+                1,
+                Math.ceil(
+                  a.name.length /
+                    Math.max(
+                      16,
+                      Math.floor((nodeWidth - 165 - depth * 15) / 7),
+                    ),
+                ),
+              )}
+              className="nodrag attribute-name"
+              aria-label={`${a.name} field name`}
+              value={a.name}
+              onFocus={begin}
+              onBlur={end}
+              onChange={(e) => update(id, a.id, { name: e.target.value })}
+            />
+            {a.compositeChildren?.length ? (
+              <span className="attribute-type composite-badge">
+                {(a.preset === "address" ? "address" : "composite") +
+                  (a.isMultivalued ? "[]" : "")}
+              </span>
             ) : (
-              "·"
+              <select
+                className="nodrag attribute-type"
+                aria-label={`${a.name} type`}
+                value={a.type}
+                onChange={(e) =>
+                  update(id, a.id, { type: e.target.value as DataType })
+                }
+              >
+                {DATA_TYPES.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
             )}
-          </span>
-          <input
-            className="nodrag attribute-name"
-            aria-label={`Attribute ${i + 1} name`}
-            value={a.name}
-            onFocus={begin}
-            onBlur={end}
-            onChange={(e) => update(id, a.id, { name: e.target.value })}
-          />
-          <select
-            className="nodrag attribute-type"
-            aria-label={`${a.name} type`}
-            value={a.type}
-            onChange={(e) =>
-              update(id, a.id, { type: e.target.value as DataType })
-            }
-          >
-            {DATA_TYPES.map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
-          <Handle
-            id={`attr-in-${a.id}`}
-            type="target"
-            position={Position.Left}
-          />
-          <Handle
-            id={`attr-out-${a.id}`}
-            type="source"
-            position={Position.Right}
-          />
-        </div>
+            <Handle
+              id={`attr-in-${a.id}`}
+              type="target"
+              position={Position.Left}
+            />
+            <Handle
+              id={`attr-out-${a.id}`}
+              type="source"
+              position={Position.Right}
+            />
+          </div>
+        </AttributeMenu>
       ))}
       {data.foreignColumns?.map((c) => (
-        <div className="attribute-row generated-column" key={c.name}>
+        <div
+          className="attribute-row generated-column nodrag"
+          key={`${c.sourceRelationshipId}:${c.generatedName}`}
+          tabIndex={0}
+          role="button"
+          aria-label={`Edit foreign key ${c.name}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            useERStore
+              .getState()
+              .focusGenerated(
+                id,
+                `fk:${c.sourceRelationshipId ?? "inherited"}:${c.generatedName}`,
+              );
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              useERStore
+                .getState()
+                .focusGenerated(
+                  id,
+                  `fk:${c.sourceRelationshipId ?? "inherited"}:${c.generatedName}`,
+                );
+            }
+          }}
+        >
           <span className="fk-badge">FK</span>
           <span className="attribute-name" title={c.name}>
             {c.name}
@@ -201,7 +342,7 @@ export const EntityNode = memo(function EntityNode({
         </div>
       ))}
       <footer>
-        <span>{entity.attributes.length} fields</span>
+        <span>{rows.length} fields</span>
         <button
           className="nodrag"
           onClick={() => useERStore.getState().addAttribute(id)}

@@ -1558,3 +1558,148 @@ kbd {
     white-space: normal;
   }
 }
+.focused-attribute-row {
+  background: #a88afa18;
+  box-shadow: inset 2px 0 #b499f5;
+}
+.focused-attribute-editor {
+  border-color: #ac8dea;
+  box-shadow: 0 0 0 1px #ac8dea40;
+}
+.composite-badge {
+  color: #bca6e7;
+  font-family: inherit;
+  font-size: 10px;
+}
+.attribute-context-menu {
+  z-index: 80;
+  min-width: 205px;
+  padding: 5px;
+  border-radius: 8px;
+  border: 1px solid #4c445e;
+  background: #222332;
+  box-shadow: 0 10px 30px #0007;
+  color: #d6dcea;
+}
+.attribute-context-menu [role="menuitem"] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+.attribute-context-menu [data-highlighted] {
+  background: #393047;
+}
+.attribute-context-menu .delete-item {
+  color: #f0aba8;
+}
+.chen-attribute[role="button"] {
+  cursor: pointer;
+}
+/* Comfortable editable rows with full names and generous connection targets. */
+.entity-node .attribute-row {
+  height: auto;
+  min-height: 38px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  position: relative;
+  gap: 7px;
+}
+.entity-node textarea.attribute-name {
+  resize: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  line-height: 1.5;
+  min-height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  field-sizing: content;
+  flex: 1;
+  min-width: 0;
+}
+.entity-node .attribute-type {
+  width: 122px;
+  flex: 0 0 122px;
+  text-align: right;
+}
+.entity-node .generated-column .attribute-name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: visible;
+  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.generated-column[role="button"] {
+  cursor: pointer;
+}
+.generated-column[role="button"]:hover {
+  background: #253444;
+}
+.entity-node .attribute-grip {
+  width: 19px;
+  flex-shrink: 0;
+  padding: 3px;
+  opacity: 0.65;
+}
+.entity-node .react-flow__handle {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background: transparent !important;
+}
+.entity-node .react-flow__handle::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: #91a2bd;
+  border: 2px solid #171c26;
+}
+.entity-node .react-flow__handle:hover::after {
+  background: #cbb1ff;
+  box-shadow: 0 0 0 4px #ad8fe844;
+}
+.entity-node > .react-flow__handle {
+  top: 25px;
+}
+.entity-node .attribute-row .react-flow__handle {
+  opacity: 0.3;
+}
+.entity-node .attribute-row:hover .react-flow__handle {
+  opacity: 1;
+}
+.length-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.length-grid .field-label {
+  margin-top: 0;
+}
+.digits-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.digits-check input {
+  accent-color: #b999ee;
+}
+.length-controls small {
+  line-height: 1.6;
+  color: #8996aa;
+}
+.attribute-editor-title strong {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.entity-node .generated-column .attribute-type {
+  color: #899db5;
+}

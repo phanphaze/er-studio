@@ -62,6 +62,7 @@ export function CrowsFootEdge(props: EdgeProps) {
       </defs>
       <BaseEdge
         {...props}
+        interactionWidth={30}
         path={path}
         markerStart={d.uml ? undefined : `url(#${props.id}-s)`}
         markerEnd={d.uml ? undefined : `url(#${props.id}-e)`}
@@ -74,7 +75,15 @@ export function CrowsFootEdge(props: EdgeProps) {
       <EdgeLabelRenderer>
         <div
           className={`edge-label ${props.selected ? "selected-edge-label" : ""}`}
+          onClick={() => {
+            if (d.relationshipId)
+              useERStore
+                .getState()
+                .setSelection({ kind: "relationship", id: d.relationshipId });
+          }}
           style={{
+            pointerEvents: "all",
+            cursor: "pointer",
             transform: `translate(-50%, -50%) translate(${x}px,${y}px)`,
           }}
         >

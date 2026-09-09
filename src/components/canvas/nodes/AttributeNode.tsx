@@ -1,25 +1,46 @@
 "use client";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
+import { useERStore } from "@/store/useERStore";
+import { AttributeMenu } from "@/components/ui/attribute-menu";
 import type { Attribute } from "@/lib/ast/types";
 export function AttributeNode({
   data,
-}: NodeProps<Node<{ attribute: Attribute }, "attribute">>) {
+}: NodeProps<Node<{ attribute: Attribute; ownerId: string }, "attribute">>) {
   const a = data.attribute;
   return (
-    <div
-      className={`chen-attribute ${a.isMultivalued ? "multivalued" : ""} ${a.isDerived ? "derived" : ""}`}
+    <AttributeMenu
+      ownerId={data.ownerId}
+      attributeId={a.id}
+      hasChildren={!!a.compositeChildren?.length}
     >
-      <Handle id="in" type="target" position={Position.Bottom} />
-      <span
-        style={{
-          textDecoration:
-            a.isPrimaryKey || a.isPartialKey ? "underline" : undefined,
-          textDecorationStyle: a.isPartialKey ? "dashed" : undefined,
+      <div
+        tabIndex={0}
+        role="button"
+        aria-label={`Edit ${a.name}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          useERStore.getState().focusAttribute(data.ownerId, a.id);
         }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            useERStore.getState().focusAttribute(data.ownerId, a.id);
+          }
+        }}
+        className={`chen-attribute ${a.isMultivalued ? "multivalued" : ""} ${a.isDerived ? "derived" : ""}`}
       >
-        {a.name}
-      </span>
-      <Handle id="out" type="source" position={Position.Top} />
-    </div>
+        <Handle id="in" type="target" position={Position.Bottom} />
+        <span
+          style={{
+            textDecoration:
+              a.isPrimaryKey || a.isPartialKey ? "underline" : undefined,
+            textDecorationStyle: a.isPartialKey ? "dashed" : undefined,
+          }}
+        >
+          {a.name}
+        </span>
+        <Handle id="out" type="source" position={Position.Top} />
+      </div>
+    </AttributeMenu>
   );
 }

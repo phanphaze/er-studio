@@ -89,7 +89,7 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
               id: a.id,
               type: "attribute",
               position: { x: x + i * 160, y },
-              data: { attribute: a },
+              data: { attribute: a, ownerId: e.id },
               draggable: false,
               selectable: false,
             });
@@ -195,6 +195,7 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
         fitViewOptions={{ padding: 0.18, maxZoom: 0.9 }}
         minZoom={0.2}
         maxZoom={1.8}
+        connectionRadius={36}
         snapToGrid
         snapGrid={[20, 20]}
         deleteKeyCode={null}

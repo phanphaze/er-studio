@@ -44,6 +44,7 @@ export function useProjects() {
       past: [],
       future: [],
       selection: null,
+      attributeFocus: null,
       transactionBase: null,
     });
     setCurrent(project);

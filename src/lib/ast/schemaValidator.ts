@@ -46,6 +46,51 @@ export function validateGraph(g: ERGraph): ValidationIssue[] {
         );
       if (a.check && !Number.isFinite(a.check.value))
         error("CHECK", "Check value must be finite.", a.id);
+      for (const limit of [a.minLength, a.maxLength])
+        if (
+          limit !== undefined &&
+          (!Number.isInteger(limit) || limit < 0 || limit > 1000000)
+        )
+          error(
+            "LENGTH",
+            "Length limits must be integers between 0 and 1,000,000.",
+            a.id,
+          );
+      if (
+        a.minLength !== undefined &&
+        a.maxLength !== undefined &&
+        a.minLength > a.maxLength
+      )
+        error("LENGTH", "Minimum length cannot exceed maximum length.", a.id);
+      if (
+        (a.minLength !== undefined ||
+          a.maxLength !== undefined ||
+          a.digitsOnly) &&
+        !["text", "varchar(255)"].includes(a.type)
+      )
+        error(
+          "LENGTH_TYPE",
+          "Character and digit limits require text or varchar fields.",
+          a.id,
+        );
+      if (
+        a.compositeChildren?.length &&
+        (a.minLength !== undefined || a.maxLength !== undefined || a.digitsOnly)
+      )
+        error(
+          "COMPOSITE_LENGTH",
+          "Set length limits on individual composite children.",
+          a.id,
+        );
+      if (
+        a.type === "varchar(255)" &&
+        ((a.minLength ?? 0) > 255 || (a.maxLength ?? 0) > 255)
+      )
+        error(
+          "LENGTH",
+          "varchar(255) supports at most 255 characters; use text for larger limits.",
+          a.id,
+        );
       if (a.compositeChildren) attrs(a.compositeChildren, owner);
     }
   };

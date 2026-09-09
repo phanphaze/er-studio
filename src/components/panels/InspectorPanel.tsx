@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import {
   SlidersHorizontal,
   ShieldCheck,
@@ -21,6 +21,7 @@ import {
   type EntityType,
   type Relationship,
   type ReferentialAction,
+  type RelationalColumn,
 } from "@/lib/ast/types";
 import { SqlPreviewPanel } from "./SqlPreviewPanel";
 function TextField({
@@ -54,8 +55,13 @@ function AttributeEditor({
   depth?: number;
 }) {
   const update = useERStore((s) => s.updateAttribute);
+  const focused = useERStore((s) => s.attributeFocus?.attributeId === a.id);
   return (
-    <div className="attribute-editor" style={{ marginLeft: depth * 8 }}>
+    <div
+      data-attribute-editor={a.id}
+      className={`attribute-editor ${focused ? "focused-attribute-editor" : ""}`}
+      style={{ marginLeft: depth * 8 }}
+    >
       <div className="attribute-editor-title">
         <strong>{a.name}</strong>
         <button
@@ -70,19 +76,67 @@ function AttributeEditor({
         value={a.name}
         onChange={(name) => update(entityId, a.id, { name })}
       />
-      <label className="field-label">
-        Data type
-        <select
-          value={a.type}
-          onChange={(e) =>
-            update(entityId, a.id, { type: e.target.value as DataType })
-          }
-        >
-          {DATA_TYPES.map((t) => (
-            <option key={t}>{t}</option>
-          ))}
-        </select>
-      </label>
+      {a.compositeChildren?.length ? (
+        <p className="muted">
+          {a.preset === "address" ? "Address" : "Composite"} structure · Edit
+          the child fields below.
+        </p>
+      ) : (
+        <label className="field-label">
+          Data type
+          <select
+            value={a.type}
+            onChange={(e) =>
+              update(entityId, a.id, { type: e.target.value as DataType })
+            }
+          >
+            {DATA_TYPES.map((t) => (
+              <option key={t}>{t}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      {!a.compositeChildren?.length &&
+        ["text", "varchar(255)"].includes(a.type) && (
+          <div className="length-controls">
+            <div className="field-label">
+              Length limits{" "}
+              <small>Set both to the same number for an exact length.</small>
+            </div>
+            <div className="length-grid">
+              {(["minLength", "maxLength"] as const).map((key) => (
+                <label className="field-label" key={key}>
+                  {key === "minLength" ? "Minimum" : "Maximum"}
+                  <input
+                    type="number"
+                    min={0}
+                    max={a.type === "varchar(255)" ? 255 : 1000000}
+                    step={1}
+                    value={a[key] ?? ""}
+                    onChange={(e) =>
+                      update(entityId, a.id, {
+                        [key]:
+                          e.target.value === ""
+                            ? undefined
+                            : Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <label className="digits-check">
+              <input
+                type="checkbox"
+                checked={a.digitsOnly ?? false}
+                onChange={(e) =>
+                  update(entityId, a.id, { digitsOnly: e.target.checked })
+                }
+              />
+              Digits only (0–9)
+            </label>
+          </div>
+        )}
       <div className="flag-grid">
         {(
           [
@@ -143,6 +197,105 @@ function AttributeEditor({
       >
         + Composite child
       </button>
+    </div>
+  );
+}
+function GeneratedFieldEditor({
+  column,
+  ownerId,
+}: {
+  column: RelationalColumn;
+  ownerId: string;
+}) {
+  const relationship = useERStore((s) =>
+    s.graph.relationships.find((r) => r.id === column.sourceRelationshipId),
+  );
+  const key = `fk:${column.sourceRelationshipId ?? "inherited"}:${column.generatedName}`;
+  const focused = useERStore((s) => s.attributeFocus?.attributeId === key);
+  const [name, setName] = useState(column.name);
+  const [renameError, setRenameError] = useState("");
+  useEffect(() => setName(column.name), [column.name]);
+  return (
+    <div
+      data-attribute-editor={key}
+      className={`attribute-editor ${focused ? "focused-attribute-editor" : ""}`}
+    >
+      <div className="attribute-editor-title">
+        <strong>FK · {column.name}</strong>
+      </div>
+      {relationship ? (
+        <label className="field-label">
+          Column name
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => {
+              if (!name.trim() || name === column.name) {
+                setName(column.name);
+                setRenameError("");
+                return;
+              }
+              const foreignKeyNames = {
+                ...relationship.foreignKeyNames,
+                [column.generatedName!]: name.trim(),
+              };
+              const candidate = structuredClone(useERStore.getState().graph);
+              candidate.relationships.find(
+                (r) => r.id === relationship.id,
+              )!.foreignKeyNames = foreignKeyNames;
+              const error = compileGraph(candidate).issues.find(
+                (i) => i.severity === "error",
+              );
+              if (error) {
+                setRenameError(error.message);
+                return;
+              }
+              setRenameError("");
+              useERStore
+                .getState()
+                .updateRelationship(relationship.id, { foreignKeyNames });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+          />
+        </label>
+      ) : (
+        <p>{column.name}</p>
+      )}
+      {renameError && (
+        <p role="alert" className="muted">
+          {renameError}
+        </p>
+      )}
+      <p className="muted">
+        {column.type} · {column.nullable ? "Nullable" : "Required"}. Type
+        follows the referenced key.
+      </p>
+      {relationship ? (
+        <>
+          <p className="muted">
+            Generated by {relationship.name}. Nullability and referential
+            actions are controlled by this relationship.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              useERStore
+                .getState()
+                .setSelection({ kind: "relationship", id: relationship.id })
+            }
+          >
+            Edit relationship
+          </Button>
+        </>
+      ) : (
+        <p className="muted">
+          Inherited from the parent key. Edit the parent entity or
+          specialization to change this field.
+        </p>
+      )}
     </div>
   );
 }
@@ -338,6 +491,35 @@ function RelationshipEditor({ r }: { r: Relationship }) {
 export function InspectorPanel() {
   const graph = useERStore((s) => s.graph);
   const selection = useERStore((s) => s.selection);
+  const focused = useERStore((s) => s.attributeFocus);
+  const [tab, setTab] = useState("properties");
+  useEffect(() => {
+    if (focused) setTab("properties");
+  }, [focused]);
+  useEffect(() => {
+    if (!focused || tab !== "properties") return;
+    const frame = requestAnimationFrame(() => {
+      const target = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-attribute-editor]"),
+      ).find((el) => el.dataset.attributeEditor === focused.attributeId);
+      const panel = target?.closest<HTMLElement>(".panel-scroll");
+      if (target && panel) {
+        const top =
+          target.getBoundingClientRect().top -
+          panel.getBoundingClientRect().top +
+          panel.scrollTop -
+          12;
+        panel.scrollTo({
+          top,
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+            ? "instant"
+            : "smooth",
+        });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focused, tab]);
   const result = useMemo(() => compileGraph(graph), [graph]);
   const e =
     selection?.kind === "entity"
@@ -353,7 +535,7 @@ export function InspectorPanel() {
       : undefined;
   return (
     <aside className="inspector">
-      <Tabs defaultValue="properties" className="inspector-tabs">
+      <Tabs value={tab} onValueChange={setTab} className="inspector-tabs">
         <TabsList className="panel-tabs">
           <TabsTrigger value="properties">
             <SlidersHorizontal size={15} /> Properties
@@ -386,11 +568,9 @@ export function InspectorPanel() {
                 <select
                   value={e.type}
                   onChange={(event) =>
-                    useERStore
-                      .getState()
-                      .updateEntity(e.id, {
-                        type: event.target.value as EntityType,
-                      })
+                    useERStore.getState().updateEntity(e.id, {
+                      type: event.target.value as EntityType,
+                    })
                   }
                 >
                   {["regular", "weak", "associative"].map((t) => (
@@ -423,9 +603,27 @@ export function InspectorPanel() {
                   <Plus size={16} />
                 </Button>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => useERStore.getState().addAddress(e.id)}
+              >
+                + Address field
+              </Button>
               {e.attributes.map((a) => (
                 <AttributeEditor entityId={e.id} a={a} key={a.id} />
               ))}
+
+              {result.schema.tables
+                .find((t) => t.name === e.name)
+                ?.columns.filter((c) => !c.sourceAttributeId)
+                .map((c) => (
+                  <GeneratedFieldEditor
+                    ownerId={e.id}
+                    key={`${c.sourceRelationshipId}:${c.generatedName}`}
+                    column={c}
+                  />
+                ))}
             </>
           ) : r ? (
             <RelationshipEditor r={r} />
@@ -441,11 +639,9 @@ export function InspectorPanel() {
                     <select
                       value={spec[k]}
                       onChange={(e) =>
-                        useERStore
-                          .getState()
-                          .updateSpecialization(spec.id, {
-                            [k]: e.target.value,
-                          })
+                        useERStore.getState().updateSpecialization(spec.id, {
+                          [k]: e.target.value,
+                        })
                       }
                     >
                       {(k === "strategy"

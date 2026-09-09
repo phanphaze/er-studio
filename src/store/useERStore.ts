@@ -13,7 +13,17 @@ import type {
   Specialization,
 } from "@/lib/ast/types";
 import { attribute, seedGraph } from "./seed";
+import { attributeRows, attributeSiblings } from "@/lib/ast/attributes";
 export interface ERState {
+  addAddress: (ownerId: string) => void;
+  focusGenerated: (ownerId: string, key: string) => void;
+  attributeFocus: {
+    ownerId: string;
+    attributeId: string;
+    request: number;
+    generated?: boolean;
+  } | null;
+  focusAttribute: (ownerId: string, attributeId: string) => void;
   graph: ERGraph;
   past: ERGraph[];
   future: ERGraph[];
@@ -82,6 +92,17 @@ const cloneAttributes = (attrs: Attribute[]): Attribute[] =>
       : undefined,
   }));
 const cleanSelection = (s: ERState) => {
+  if (s.attributeFocus) {
+    const owner = [...s.graph.entities, ...s.graph.relationships].find(
+      (e) => e.id === s.attributeFocus!.ownerId,
+    );
+    if (
+      !owner ||
+      (!s.attributeFocus.generated &&
+        !findAttribute(owner.attributes, s.attributeFocus.attributeId))
+    )
+      s.attributeFocus = null;
+  }
   if (!s.selection) return;
   const list =
     s.selection.kind === "entity"
@@ -95,6 +116,65 @@ const cleanSelection = (s: ERState) => {
  * selection, viewport and renderer preference never destroy redo history. */
 export const useERStore = create<ERState>()(
   immer((set, get) => ({
+    addAddress: (ownerId) => {
+      const id = crypto.randomUUID();
+      get().commit((g) => {
+        const owner =
+          g.entities.find((e) => e.id === ownerId) ??
+          g.relationships.find((r) => r.id === ownerId);
+        if (!owner) return;
+        let name = "address",
+          i = 2;
+        while (owner.attributes.some((a) => a.name === name))
+          name = "address_" + i++;
+        owner.attributes.push({
+          ...attribute(id, name),
+          preset: "address",
+          compositeChildren: [
+            "street",
+            "address_line_2",
+            "city",
+            "state",
+            "postal_code",
+            "country",
+          ].map((name) => ({
+            ...attribute(crypto.randomUUID(), name),
+            isNullable: ["address_line_2", "state"].includes(name),
+          })),
+        });
+      });
+      get().focusAttribute(ownerId, id);
+    },
+    focusGenerated: (ownerId, key) =>
+      set((s) => {
+        s.selection = { kind: "entity", id: ownerId };
+        s.attributeFocus = {
+          ownerId,
+          attributeId: key,
+          generated: true,
+          request: (s.attributeFocus?.request ?? 0) + 1,
+        };
+      }),
+    attributeFocus: null,
+    focusAttribute: (ownerId, attributeId) => {
+      const owner =
+        get().graph.entities.find((e) => e.id === ownerId) ??
+        get().graph.relationships.find((r) => r.id === ownerId);
+      if (!owner || !findAttribute(owner.attributes, attributeId)) return;
+      set((s) => {
+        s.selection = {
+          kind: s.graph.entities.some((e) => e.id === ownerId)
+            ? "entity"
+            : "relationship",
+          id: ownerId,
+        };
+        s.attributeFocus = {
+          ownerId,
+          attributeId,
+          request: (s.attributeFocus?.request ?? 0) + 1,
+        };
+      });
+    },
     graph: seedGraph,
     past: [],
     future: [],
@@ -199,6 +279,11 @@ export const useERStore = create<ERState>()(
         const parent = parentId
           ? findAttribute(e.attributes, parentId)
           : undefined;
+        if (parent) {
+          delete parent.minLength;
+          delete parent.maxLength;
+          delete parent.digitsOnly;
+        }
         const list = parent ? (parent.compositeChildren ??= []) : e.attributes;
         let name = "column";
         let i = 2;
@@ -213,6 +298,11 @@ export const useERStore = create<ERState>()(
         const a = e && findAttribute(e.attributes, id);
         if (a) {
           Object.assign(a, patch);
+          if (patch.type && !["text", "varchar(255)"].includes(patch.type)) {
+            delete a.minLength;
+            delete a.maxLength;
+            delete a.digitsOnly;
+          }
           if (a.isPrimaryKey || a.isPartialKey) {
             a.isNullable = false;
             a.isDerived = false;
@@ -225,14 +315,24 @@ export const useERStore = create<ERState>()(
         const e =
           g.entities.find((e) => e.id === entityId) ??
           g.relationships.find((r) => r.id === entityId);
+        const removed = e && findAttribute(e.attributes, id);
+        const removedIds = new Set(
+          removed
+            ? attributeRows([removed]).map((row) => row.attribute.id)
+            : [],
+        );
         if (e) removeAttribute(e.attributes, id);
         for (const r of g.relationships)
           for (const p of r.endpoints)
-            if (p.attributeId === id) delete p.attributeId;
+            if (p.attributeId && removedIds.has(p.attributeId))
+              delete p.attributeId;
       }),
     reorderAttribute: (entityId, id, to) =>
       get().commit((g) => {
-        const attrs = g.entities.find((e) => e.id === entityId)?.attributes;
+        const owner =
+          g.entities.find((e) => e.id === entityId) ??
+          g.relationships.find((r) => r.id === entityId);
+        const attrs = owner && attributeSiblings(owner.attributes, id);
         if (!attrs) return;
         const from = attrs.findIndex((a) => a.id === id);
         if (from < 0 || to < 0 || to >= attrs.length || from === to) return;
@@ -281,7 +381,7 @@ export const useERStore = create<ERState>()(
       get().commit((g) => {
         g.specializations = g.specializations.filter((s) => s.id !== id);
       }),
-    setSelection: (selection) => set({ selection }),
+    setSelection: (selection) => set({ selection, attributeFocus: null }),
     setNotation: (notation) => set({ notation }),
     moveEntities: (positions) =>
       get().commit((g) => {

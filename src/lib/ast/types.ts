@@ -14,6 +14,7 @@ export type DataType =
   | "bigint"
   | "numeric(12,2)"
   | "boolean"
+  | "time"
   | "date"
   | "timestamptz"
   | "jsonb";
@@ -25,6 +26,7 @@ export const DATA_TYPES: readonly DataType[] = [
   "bigint",
   "numeric(12,2)",
   "boolean",
+  "time",
   "date",
   "timestamptz",
   "jsonb",
@@ -39,6 +41,10 @@ export interface Attribute {
   isUnique: boolean;
   isDerived: boolean;
   isMultivalued: boolean;
+  minLength?: number;
+  maxLength?: number;
+  digitsOnly?: boolean;
+  preset?: "address";
   compositeChildren?: Attribute[];
   check?: { operator: ">" | ">=" | "<" | "<=" | "=" | "<>"; value: number };
 }
@@ -77,6 +83,7 @@ export interface Relationship {
   /** Referencing endpoint index for 1:1; for 1:N inferred from bounds. */ foreignKeyEndpoint?: number;
   onDelete: ReferentialAction;
   onUpdate: ReferentialAction;
+  foreignKeyNames?: Record<string, string>;
   position?: Point;
 }
 export type InheritanceStrategy = "table-per-type" | "table-per-hierarchy";
@@ -102,6 +109,8 @@ export interface RelationalColumn {
   type: DataType;
   nullable: boolean;
   sourceAttributeId?: ID;
+  sourceRelationshipId?: ID;
+  generatedName?: string;
 }
 export interface ForeignKey {
   name: string;

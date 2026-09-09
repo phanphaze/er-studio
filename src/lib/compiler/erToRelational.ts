@@ -66,6 +66,11 @@ export function erToRelational(g: ERGraph): RelationalSchema {
     if ((a.isPrimaryKey || a.isPartialKey) && !forceNullable)
       t.primaryKey.push(n);
     if (a.isUnique) t.uniqueConstraints.push([n]);
+    if (a.minLength !== undefined)
+      t.checks.push(`char_length(${quote(n)}) >= ${a.minLength}`);
+    if (a.maxLength !== undefined)
+      t.checks.push(`char_length(${quote(n)}) <= ${a.maxLength}`);
+    if (a.digitsOnly) t.checks.push(`${quote(n)} ~ '^[0-9]+$'`);
     if (a.check) {
       if (
         ![">", ">=", "<", "<=", "=", "<>"].includes(a.check.operator) ||
@@ -83,6 +88,7 @@ export function erToRelational(g: ERGraph): RelationalSchema {
     key: boolean,
     onDelete: ReferentialAction = "CASCADE",
     onUpdate: ReferentialAction = "CASCADE",
+    relationship?: Relationship,
   ) => {
     if (!source.primaryKey.length)
       throw Error(`${source.name} has no primary key`);
@@ -93,10 +99,26 @@ export function erToRelational(g: ERGraph): RelationalSchema {
       throw Error(`SET NULL requires nullable foreign keys on ${target.name}`);
     const cols = source.primaryKey.map((n) => {
       const col = source.columns.find((c) => c.name === n)!;
-      const name = prefix + "_" + n;
+      const generatedName = prefix + "_" + n;
+      const name =
+        relationship?.foreignKeyNames?.[generatedName] ?? generatedName;
+      if (
+        !name.trim() ||
+        name.includes("\0") ||
+        new TextEncoder().encode(name).length > 63
+      )
+        throw Error(
+          "Foreign key names must contain 1–63 UTF-8 bytes and no null characters.",
+        );
       if (target.columns.some((c) => c.name === name))
         throw Error(`Column name collision: ${target.name}.${name}`);
-      target.columns.push({ name, type: col.type, nullable });
+      target.columns.push({
+        name,
+        type: col.type,
+        nullable,
+        sourceRelationshipId: relationship?.id,
+        generatedName,
+      });
       if (key) target.primaryKey.push(name);
       return name;
     });
@@ -150,7 +172,7 @@ export function erToRelational(g: ERGraph): RelationalSchema {
         );
         if (!r?.ownerEntityId) throw Error("Missing weak owner");
         const parent = build(r.ownerEntityId);
-        fk(t, parent, parent.name, false, true, r.onDelete, r.onUpdate);
+        fk(t, parent, parent.name, false, true, r.onDelete, r.onUpdate, r);
       }
     }
     byEntity.set(id, t);
@@ -221,6 +243,7 @@ export function erToRelational(g: ERGraph): RelationalSchema {
             true,
             r.onDelete,
             r.onUpdate,
+            r,
           ),
         );
       }
@@ -250,6 +273,7 @@ export function erToRelational(g: ERGraph): RelationalSchema {
         false,
         r.onDelete,
         r.onUpdate,
+        r,
       );
       if (r.cardinality === "1:1") tt.uniqueConstraints.push(cols);
       r.attributes.forEach((a) => add(tt, a, r.name + "_"));

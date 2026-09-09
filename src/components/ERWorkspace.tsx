@@ -39,6 +39,10 @@ export function ERWorkspace() {
   const graph = useERStore((s) => s.graph),
     selection = useERStore((s) => s.selection);
   const projects = useProjects();
+  const attributeFocus = useERStore((s) => s.attributeFocus);
+  useEffect(() => {
+    if (attributeFocus) setRightWidth((w) => (w === 0 ? 324 : w));
+  }, [attributeFocus]);
   const [view, setView] = useState<"editor" | "projects">("editor");
   const [leftWidth, setLeftWidth] = useState(218),
     [rightWidth, setRightWidth] = useState(324);
@@ -49,6 +53,11 @@ export function ERWorkspace() {
   const canvasRef = useRef<CanvasActions>(null);
   const [notice, setNotice] = useState("");
   const [pdfBusy, setPdfBusy] = useState(false);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 3500);
+    return () => clearTimeout(timer);
+  }, [notice]);
   const [newOpen, setNewOpen] = useState(false),
     [newName, setNewName] = useState("Untitled project");
   const [pending, setPending] = useState<(() => void) | null>(null);

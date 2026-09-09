@@ -13,6 +13,10 @@ const attribute: z.ZodType<Attribute> = z.lazy(() =>
     isUnique: z.boolean(),
     isDerived: z.boolean(),
     isMultivalued: z.boolean(),
+    minLength: z.number().int().min(0).max(1000000).optional(),
+    maxLength: z.number().int().min(0).max(1000000).optional(),
+    digitsOnly: z.boolean().optional(),
+    preset: z.literal("address").optional(),
     compositeChildren: z.array(attribute).max(250).optional(),
     check: z
       .object({
@@ -65,6 +69,9 @@ const model = z.object({
           )
           .max(100),
         attributes: z.array(attribute).max(250),
+        foreignKeyNames: z
+          .record(z.string().max(256), z.string().min(1).max(63))
+          .optional(),
         ownerEntityId: id.optional(),
         foreignKeyEndpoint: z.number().int().min(0).max(1).optional(),
         onDelete: action,

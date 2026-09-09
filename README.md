@@ -66,3 +66,19 @@ Both sidebar sections now collapse. Drag either vertical separator to resize a p
 PDF exports capture the complete diagram at its current notation, independent of canvas pan/zoom, and fit it onto an A3 page with title and margins. The diagram is a bounded-resolution raster embedded in the PDF, not editable vector artwork. Very large diagrams may require zooming in the PDF. JSON backups and SQL export remain available.
 
 Additional integration tests execute the generated SQLite migration and project API queries, including revision conflicts, malformed input, separate projects and storage failures. Browser/PDF visual QA has not been performed.
+
+## Attribute editing UX
+
+Click a field in an entity block (including indented composite children), or a Chen attribute oval, to select its owner, reopen the inspector if collapsed, switch to Properties, and scroll/highlight its editor. These navigation requests are UI state and never enter undo history or change saved models. Right-click a field for Edit properties or Delete attribute. Deleting a composite also deletes its descendants; Undo restores them and their connection anchors. Nested attributes reorder only among siblings. Composite parents display `composite` / `composite[]` badges in Crow's Foot and UML rather than a misleading scalar type.
+
+Payment-address membership is modeled using a standard CreditCard–Address relationship, plus the Customer ownership relationships. The existing relationship editor supplies cardinality and referential actions. Requiring that the card and address belong to the same customer is an additional cross-relationship constraint, not an attribute functional-dependency arrow; automatic enforcement of that constraint is not implemented.
+
+## Field controls, generated keys, and connection targets
+
+Text and varchar fields support minimum/maximum character lengths and an optional ASCII digits-only check. Equal min/max specifies an exact length. Store phone/card identifiers as text to preserve leading zeros. Limits are emitted as PostgreSQL CHECK constraints, including for nested children, and round-trip through saved projects. `time` is a PostgreSQL time-of-day type without a date or time zone; use `timestamptz` for instants.
+
+`+ Address field` creates an address composite preset (street, optional address_line_2, city, optional state, postal_code, country); all children remain editable. Multivalued still creates a repeated-address child table. Address is a modeling preset, not a proprietary SQL scalar type.
+
+Entity blocks size to their contents within a bounded width, and long names wrap instead of being covered by the type column. Dragging a field grip previews order as it crosses sibling rows, animates their positions, and records one undo transaction. Generated FK rows are clickable, appear in Properties, allow name overrides for relationship-generated columns, and link to the defining relationship. Their type remains derived from the referenced key; nullability and actions are edited through the relationship to keep the model consistent. Overrides are stored by generated name, so renaming an owner/relationship may require setting the override again.
+
+Connection handles have enlarged transparent hit areas, connection snapping uses a 36-pixel radius, and edge selection uses a 30-pixel interaction stroke. Success notifications disappear after 3.5 seconds; actionable errors remain until dismissed. Automated tests cover length/digit enforcement in PostgreSQL, time, address preset undo, FK renaming and file round-trips; browser interaction and visual animation QA have not been run.
