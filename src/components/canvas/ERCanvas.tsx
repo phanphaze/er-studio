@@ -1,5 +1,14 @@
 "use client";
-import { useMemo, useImperativeHandle, useRef, type Ref } from "react";
+import {
+  useMemo,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
+import { projectGraph } from "@/lib/layout/projection";
+import { organize, aligned } from "@/lib/layout/organize";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { exportDiagramPdf } from "@/lib/export/diagramPdf";
 import {
   ReactFlow,
@@ -14,9 +23,7 @@ import {
   type Edge,
 } from "@xyflow/react";
 import { useERStore } from "@/store/useERStore";
-import { compileGraph } from "@/lib/compiler/sqlGenerator";
 import { AttributeNode } from "./nodes/AttributeNode";
-import type { Attribute } from "@/lib/ast/types";
 import { EntityNode } from "./nodes/EntityNode";
 import { RelationshipNode } from "./nodes/RelationshipNode";
 import { ISANode } from "./nodes/ISANode";
@@ -31,11 +38,42 @@ const nodeTypes = {
 const edgeTypes = { crow: CrowsFootEdge, chen: ChenEdge };
 export interface CanvasActions {
   exportPdf: () => Promise<void>;
+  organize: () => Promise<void>;
+  align: (mode: string) => void;
 }
 function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
   const flow = useReactFlow();
+  const [multi, setMulti] = useState<string[]>([]);
+  const mode = useSettingsStore((s) => s.mode);
+  const savePositions = (
+    positions: Record<string, { x: number; y: number }>,
+    notation = useERStore.getState().notation,
+  ) =>
+    useERStore.getState().commit((g) => {
+      g.layouts ??= {};
+      g.layouts[notation] = { ...g.layouts[notation], ...positions };
+    });
   const root = useRef<HTMLDivElement>(null);
   useImperativeHandle(actionsRef, () => ({
+    organize: async () => {
+      const before = useERStore.getState().graph;
+      const notation = useERStore.getState().notation;
+      const { nodes, edges } = projectGraph(before, notation, null);
+      const positions = await organize(nodes, edges);
+      if (useERStore.getState().graph !== before)
+        throw Error("The model changed while organizing. Please try again.");
+      savePositions(positions, notation);
+      setTimeout(() => flow.fitView({ padding: 0.16, duration: 350 }), 100);
+    },
+    align: (mode) => {
+      const nodes = flow
+        .getNodes()
+        .filter(
+          (n) =>
+            n.type === "entity" && (multi.length < 2 || multi.includes(n.id)),
+        );
+      savePositions(aligned(nodes, mode));
+    },
     exportPdf: async () => {
       const nodes = flow.getNodes().map((node) => {
         const measured = flow.getInternalNode(node.id)?.measured;
@@ -60,129 +98,30 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
   const graph = useERStore((s) => s.graph);
   const notation = useERStore((s) => s.notation);
   const selection = useERStore((s) => s.selection);
-  const { nodes, edges } = useMemo(() => {
-    const compiled = compileGraph(graph);
-    const nodes: Node[] = graph.entities.map((e) => ({
-      id: e.id,
-      type: "entity",
-      position: e.position,
-      data: {
-        entity: e,
-        foreignColumns: compiled.schema.tables
-          .find((t) => t.name === e.name)
-          ?.columns.filter((c) => !c.sourceAttributeId),
-      },
-      selected: selection?.id === e.id,
-      dragHandle: ".entity-drag",
-    }));
-    const edges: Edge<ERLinkData>[] = [];
-    if (notation === "chen") {
-      for (const e of graph.entities) {
-        const addAttrs = (
-          attrs: Attribute[],
-          parentId: string,
-          x: number,
-          y: number,
-        ) =>
-          attrs.forEach((a, i) => {
-            nodes.push({
-              id: a.id,
-              type: "attribute",
-              position: { x: x + i * 160, y },
-              data: { attribute: a, ownerId: e.id },
-              draggable: false,
-              selectable: false,
-            });
-            edges.push({
-              id: "attribute-" + a.id,
-              source: parentId,
-              target: a.id,
-              sourceHandle: parentId === e.id ? "out" : "out",
-              targetHandle: "in",
-              type: "default",
-              style: { stroke: "#586375" },
-            });
-            if (a.compositeChildren?.length)
-              addAttrs(a.compositeChildren, a.id, x + i * 160, y - 100);
-          });
-        addAttrs(e.attributes, e.id, e.position.x - 100, e.position.y - 150);
-      }
-    }
-    for (const r of graph.relationships) {
-      const a = r.endpoints[0],
-        b = r.endpoints[1];
-      if (!a || !b) continue;
-      const data: ERLinkData = {
-        label: r.name,
-        start: a.participation,
-        end: b.participation,
-        identifying: r.type === "identifying",
-        uml: notation === "uml",
-        relationshipId: r.id,
-      };
-      if (notation === "chen" || r.type === "n-ary") {
-        const ea = graph.entities.find((e) => e.id === a.entityId),
-          eb = graph.entities.find((e) => e.id === b.entityId);
-        nodes.push({
-          id: r.id,
-          type: "relationship",
-          position: r.position ?? {
-            x: ((ea?.position.x ?? 0) + (eb?.position.x ?? 500)) / 2 + 100,
-            y: ((ea?.position.y ?? 0) + (eb?.position.y ?? 0)) / 2 - 60,
-          },
-          data: { relationship: r },
-          selected: selection?.id === r.id,
-        });
-        r.endpoints.forEach((p, i) =>
-          edges.push({
-            id: r.id + "-" + i,
-            source: p.entityId,
-            target: r.id,
-            sourceHandle: "out",
-            targetHandle: "in",
-            type: "chen",
-            data: { ...data, end: p.participation },
-            selected: selection?.id === r.id,
-          }),
-        );
-      } else
-        edges.push({
-          id: r.id,
-          source: a.entityId,
-          target: b.entityId,
-          sourceHandle: a.attributeId ? `attr-out-${a.attributeId}` : "out",
-          targetHandle: b.attributeId ? `attr-in-${b.attributeId}` : "in",
-          type: "crow",
-          data,
-          selected: selection?.id === r.id,
-        });
-    }
-    for (const s of graph.specializations) {
-      nodes.push({
-        id: s.id,
-        type: "isa",
-        position: s.position,
-        data: { specialization: s },
-        selected: selection?.id === s.id,
-      });
-      edges.push({
-        id: s.id + "-parent",
-        source: s.superclassId,
-        target: s.id,
-        sourceHandle: "out",
-        targetHandle: "in",
-      });
-      for (const id of s.subclassIds)
-        edges.push({
-          id: s.id + "-" + id,
-          source: s.id,
-          target: id,
-          sourceHandle: "out",
-          targetHandle: "in",
-        });
-    }
-    return { nodes, edges };
-  }, [graph, notation, selection]);
+  const projection = useMemo(
+    () => projectGraph(graph, notation, null),
+    [graph, notation],
+  );
+  const nodes = useMemo(
+    () =>
+      projection.nodes.map((n) => ({
+        ...n,
+        selected: n.id === selection?.id || multi.includes(n.id),
+      })),
+    [projection, selection, multi],
+  );
+  const edges = useMemo(
+    () =>
+      projection.edges.map((e) => ({
+        ...e,
+        selected: Boolean(
+          selection &&
+          (e.data?.relationshipId === selection.id ||
+            e.data?.specializationId === selection.id),
+        ),
+      })),
+    [projection, selection],
+  );
   return (
     <div ref={root} className="flow-root">
       <ReactFlow
@@ -190,7 +129,7 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        colorMode="dark"
+        colorMode={mode}
         fitView
         fitViewOptions={{ padding: 0.18, maxZoom: 0.9 }}
         minZoom={0.2}
@@ -199,7 +138,15 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
         snapToGrid
         snapGrid={[20, 20]}
         deleteKeyCode={null}
-        onNodeClick={(_, n) => {
+        onNodeClick={(event, n) => {
+          if (n.type === "entity")
+            setMulti((previous) =>
+              event.shiftKey
+                ? previous.includes(n.id)
+                  ? previous.filter((id) => id !== n.id)
+                  : [...previous, n.id]
+                : [n.id],
+            );
           if (n.type === "attribute") return;
           useERStore.getState().setSelection({
             kind:
@@ -211,23 +158,25 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
             id: n.id,
           });
         }}
-        onEdgeClick={(_, e) =>
-          useERStore.getState().setSelection({
-            kind: "relationship",
-            id: (e.data as ERLinkData)?.relationshipId ?? e.id,
-          })
-        }
-        onPaneClick={() => useERStore.getState().setSelection(null)}
+        onEdgeClick={(_, e) => {
+          const d = e.data as ERLinkData;
+          if (d?.relationshipId)
+            useERStore
+              .getState()
+              .setSelection({ kind: "relationship", id: d.relationshipId });
+          else if (d?.specializationId)
+            useERStore
+              .getState()
+              .setSelection({ kind: "specialization", id: d.specializationId });
+        }}
+        onPaneClick={() => {
+          setMulti([]);
+          useERStore.getState().setSelection(null);
+        }}
         onNodeDragStart={() => useERStore.getState().beginTransaction()}
-        onNodeDrag={(_, n) =>
-          useERStore
-            .getState()
-            .moveEntities([{ id: n.id, position: n.position }])
-        }
+        onNodeDrag={(_, n) => savePositions({ [n.id]: n.position })}
         onNodeDragStop={(_, n) => {
-          useERStore
-            .getState()
-            .moveEntities([{ id: n.id, position: n.position }]);
+          savePositions({ [n.id]: n.position });
           useERStore.getState().endTransaction();
         }}
         onConnect={(c) => {
@@ -269,14 +218,16 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
           variant={BackgroundVariant.Dots}
           gap={24}
           size={1}
-          color="#303543"
+          color={mode === "light" ? "#bac4d3" : "#303543"}
         />
         <Controls showInteractive={false} />
         <MiniMap
           nodeColor={(n) =>
             (n.data.entity as { color: string } | undefined)?.color ?? "#a78bfa"
           }
-          maskColor="rgba(10,12,17,.6)"
+          maskColor={
+            mode === "light" ? "rgba(225,232,240,.6)" : "rgba(10,12,17,.6)"
+          }
           pannable
           zoomable
         />

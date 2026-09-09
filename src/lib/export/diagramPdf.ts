@@ -21,7 +21,10 @@ export async function exportDiagramPdf(
     width,
     height,
     pixelRatio: 1,
-    backgroundColor: "#0d1017",
+    backgroundColor:
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--canvas-surface")
+        .trim() || "#0d1017",
     cacheBust: false,
     style: {
       width: `${width}px`,

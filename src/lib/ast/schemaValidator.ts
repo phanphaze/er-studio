@@ -1,3 +1,4 @@
+import { isMany } from "./participation";
 import {
   DATA_TYPES,
   type Attribute,
@@ -133,17 +134,21 @@ export function validateGraph(g: ERGraph): ValidationIssue[] {
       if (!g.entities.some((e) => e.id === p.entityId))
         error("DANGLING", "Relationship endpoint is missing.", r.id);
       if (
-        ![0, 1].includes(p.participation.min) ||
-        ![1, "*"].includes(p.participation.max)
+        !Number.isInteger(p.participation.min) ||
+        p.participation.min < 0 ||
+        p.participation.min > 1000000 ||
+        (p.participation.max !== "*" &&
+          (!Number.isInteger(p.participation.max) ||
+            p.participation.max < 1 ||
+            p.participation.max > 1000000 ||
+            p.participation.min > p.participation.max))
       )
         error("BOUNDS", "Invalid participation bounds.", r.id);
     }
     if (r.type === "isa")
       error("ISA_LINK", "Use a specialization to define ISA mapping.", r.id);
     if (r.endpoints.length === 2) {
-      const many = r.endpoints.filter(
-        (p) => p.participation.max === "*",
-      ).length;
+      const many = r.endpoints.filter((p) => isMany(p.participation)).length;
       const expected = many === 2 ? "M:N" : many === 1 ? "1:N" : "1:1";
       if (r.cardinality !== expected)
         error(

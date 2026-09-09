@@ -1,7 +1,13 @@
 "use client";
+import {
+  cardinalityFor,
+  cardinalityLabel,
+  participationLabel,
+} from "@/lib/ast/participation";
 import { useMemo, useEffect, useState } from "react";
 import {
   SlidersHorizontal,
+  Settings2,
   ShieldCheck,
   Code2,
   Plus,
@@ -20,9 +26,11 @@ import {
   type DataType,
   type EntityType,
   type Relationship,
+  type Participation,
   type ReferentialAction,
   type RelationalColumn,
 } from "@/lib/ast/types";
+import { SettingsPanel } from "./SettingsPanel";
 import { SqlPreviewPanel } from "./SqlPreviewPanel";
 function TextField({
   label,
@@ -299,6 +307,100 @@ function GeneratedFieldEditor({
     </div>
   );
 }
+function ParticipationControl({
+  value,
+  onChange,
+}: {
+  value: Participation;
+  onChange: (p: Participation) => void;
+}) {
+  const preset =
+    value.min <= 1 && (value.max === 1 || value.max === "*")
+      ? `${value.min}:${value.max}`
+      : "custom";
+  return (
+    <>
+      <label className="field-label">
+        Participation
+        <select
+          value={preset}
+          onChange={(e) => {
+            if (e.target.value === "custom") onChange({ min: 0, max: 5 });
+            else {
+              const [min, max] = e.target.value.split(":");
+              onChange({
+                min: Number(min),
+                max: max === "*" ? "*" : Number(max),
+              });
+            }
+          }}
+        >
+          <option value="0:1">Optional — zero or one</option>
+          <option value="1:1">Mandatory — exactly one</option>
+          <option value="0:*">Optional — zero or many</option>
+          <option value="1:*">Mandatory — one or many</option>
+          <option value="custom">Custom participant limits</option>
+        </select>
+      </label>
+      <div className="length-grid">
+        <label className="field-label">
+          At least
+          <input
+            type="number"
+            min={0}
+            max={value.max === "*" ? 1000000 : value.max}
+            value={value.min}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                min: Math.max(0, Math.min(1000000, Number(e.target.value))),
+                max:
+                  typeof value.max === "number"
+                    ? Math.max(value.max, Number(e.target.value))
+                    : "*",
+              })
+            }
+          />
+        </label>
+        <label className="field-label">
+          At most
+          <input
+            type="number"
+            min={Math.max(1, value.min)}
+            max={1000000}
+            disabled={value.max === "*"}
+            value={value.max === "*" ? "" : value.max}
+            placeholder="Unlimited"
+            onChange={(e) =>
+              onChange({
+                ...value,
+                max: Math.max(
+                  1,
+                  value.min,
+                  Math.min(1000000, Number(e.target.value)),
+                ),
+              })
+            }
+          />
+        </label>
+      </div>
+      <label className="digits-check">
+        <input
+          type="checkbox"
+          checked={value.max === "*"}
+          onChange={(e) =>
+            onChange({
+              ...value,
+              max: e.target.checked ? "*" : Math.max(1, value.min),
+            })
+          }
+        />
+        No upper limit
+      </label>
+      <p className="participation-summary">{participationLabel(value)}</p>
+    </>
+  );
+}
 function RelationshipEditor({ r }: { r: Relationship }) {
   const update = (p: Partial<Relationship>) =>
     useERStore.getState().updateRelationship(r.id, p);
@@ -334,6 +436,9 @@ function RelationshipEditor({ r }: { r: Relationship }) {
             onChange={(e) => update({ ownerEntityId: e.target.value })}
           >
             <option value="">Select owner</option>
+            <div className="cardinality-summary">
+              {cardinalityLabel(r.cardinality)}
+            </div>
             {r.endpoints.map((p, i) => (
               <option key={i} value={p.entityId}>
                 {
@@ -366,37 +471,35 @@ function RelationshipEditor({ r }: { r: Relationship }) {
               })
             }
           />
-          <label className="field-label">
-            Participation
-            <select
-              value={`${p.participation.min}..${p.participation.max}`}
-              onChange={(e) => {
-                const [min, max] = e.target.value.split("..");
-                const endpoints = r.endpoints.map((p, j) =>
-                  i === j
-                    ? {
-                        ...p,
-                        participation: {
-                          min: Number(min) as 0 | 1,
-                          max: max === "*" ? ("*" as const) : (1 as const),
-                        },
-                      }
-                    : p,
-                );
-                const many = endpoints.filter(
-                  (p) => p.participation.max === "*",
-                ).length;
-                update({
-                  endpoints,
-                  cardinality: many === 2 ? "M:N" : many === 1 ? "1:N" : "1:1",
-                });
-              }}
-            >
-              {["0..1", "1..1", "0..*", "1..*"].map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
-          </label>
+          <p className="muted">
+            For each{" "}
+            {r.endpoints
+              .filter((_, j) => j !== i)
+              .map(
+                (p) =>
+                  useERStore
+                    .getState()
+                    .graph.entities.find((e) => e.id === p.entityId)?.name ??
+                  p.role,
+              )
+              .join(" + ")}
+            , how many{" "}
+            {
+              useERStore
+                .getState()
+                .graph.entities.find((e) => e.id === p.entityId)?.name
+            }{" "}
+            may participate?
+          </p>
+          <ParticipationControl
+            value={p.participation}
+            onChange={(participation) => {
+              const endpoints = r.endpoints.map((endpoint, j) =>
+                j === i ? { ...endpoint, participation } : endpoint,
+              );
+              update({ endpoints, cardinality: cardinalityFor(endpoints) });
+            }}
+          />
         </div>
       ))}
       {r.type === "n-ary" && (
@@ -547,6 +650,10 @@ export function InspectorPanel() {
           </TabsTrigger>
           <TabsTrigger value="sql">
             <Code2 size={15} /> SQL
+          </TabsTrigger>
+          <TabsTrigger value="settings" title="Settings">
+            <Settings2 size={15} />
+            <span>Settings</span>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="properties" className="panel-scroll">
@@ -712,6 +819,9 @@ export function InspectorPanel() {
         </TabsContent>
         <TabsContent value="sql" className="sql-tab">
           <SqlPreviewPanel />
+        </TabsContent>
+        <TabsContent value="settings" className="panel-scroll">
+          <SettingsPanel />
         </TabsContent>
       </Tabs>
     </aside>

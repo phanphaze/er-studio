@@ -28,6 +28,13 @@ const attribute: z.ZodType<Attribute> = z.lazy(() =>
 );
 const action = z.enum(["CASCADE", "RESTRICT", "NO ACTION", "SET NULL"]);
 const model = z.object({
+  layouts: z
+    .object({
+      "crows-foot": z.record(id, point).optional(),
+      chen: z.record(id, point).optional(),
+      uml: z.record(id, point).optional(),
+    })
+    .optional(),
   version: z.literal(1),
   name: z.string().max(256),
   entities: z
@@ -61,8 +68,11 @@ const model = z.object({
               entityId: id,
               role: z.string().max(256),
               participation: z.object({
-                min: z.union([z.literal(0), z.literal(1)]),
-                max: z.union([z.literal(1), z.literal("*")]),
+                min: z.number().int().min(0).max(1000000),
+                max: z.union([
+                  z.number().int().min(1).max(1000000),
+                  z.literal("*"),
+                ]),
               }),
               attributeId: id.optional(),
             }),

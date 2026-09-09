@@ -7,6 +7,9 @@ import {
 } from "@xyflow/react";
 import { useERStore } from "@/store/useERStore";
 import { ArrowLeftRight, Trash2 } from "lucide-react";
+import { isMany, participationLabel } from "@/lib/ast/participation";
+import { pathData, labelPoint } from "@/lib/layout/geometry";
+import type { Point } from "@/lib/ast/types";
 import type { Participation } from "@/lib/ast/types";
 export interface ERLinkData extends Record<string, unknown> {
   label: string;
@@ -15,15 +18,26 @@ export interface ERLinkData extends Record<string, unknown> {
   identifying: boolean;
   uml?: boolean;
   relationshipId?: string;
+  specializationId?: string;
+  mandatory?: boolean;
+  attributeLink?: boolean;
+  cardinality?: string;
+  points?: Point[];
 }
-export const bounds = (p: Participation) => `${p.min}..${p.max}`;
+export const bounds = participationLabel;
 export function CrowsFootEdge(props: EdgeProps) {
   const d = props.data as ERLinkData;
   let [path, x, y] = getSmoothStepPath({ ...props, borderRadius: 16 });
-  if (props.source === props.target) {
+  if (!d.points && props.source === props.target) {
     path = `M ${props.sourceX} ${props.sourceY} C ${props.sourceX + 190} ${props.sourceY - 240}, ${props.targetX - 190} ${props.targetY - 240}, ${props.targetX} ${props.targetY}`;
     x = (props.sourceX + props.targetX) / 2;
     y = props.sourceY - 180;
+  }
+  if (d.points?.length) {
+    path = pathData(d.points);
+    const label = labelPoint(d.points);
+    x = label.x;
+    y = label.y;
   }
   const marker = (p: Participation, suffix: string) => (
     <marker
@@ -36,13 +50,9 @@ export function CrowsFootEdge(props: EdgeProps) {
       orient="auto-start-reverse"
       markerUnits="userSpaceOnUse"
     >
-      {p.max === "*" ? (
-        <path d="M 2,-7 L 16,0 L 2,7" />
-      ) : (
-        <path d="M 7,-7 V 7" />
-      )}
+      {isMany(p) ? <path d="M 2,-7 L 16,0 L 2,7" /> : <path d="M 7,-7 V 7" />}
       {p.min === 0 ? (
-        <circle cx="20" cy="0" r="3" fill="#13161d" />
+        <circle cx="20" cy="0" r="3" fill="var(--canvas-surface,#13161d)" />
       ) : (
         <path d="M 18,-7 V 7" />
       )}
@@ -67,7 +77,9 @@ export function CrowsFootEdge(props: EdgeProps) {
         markerStart={d.uml ? undefined : `url(#${props.id}-s)`}
         markerEnd={d.uml ? undefined : `url(#${props.id}-e)`}
         style={{
-          stroke: props.selected ? "#b59aff" : "#69758b",
+          stroke: props.selected
+            ? "var(--accent)"
+            : "var(--edge-color,#69758b)",
           strokeWidth: 1.6,
           strokeDasharray: d.identifying ? undefined : "6 4",
         }}
@@ -87,9 +99,13 @@ export function CrowsFootEdge(props: EdgeProps) {
             transform: `translate(-50%, -50%) translate(${x}px,${y}px)`,
           }}
         >
-          {d.uml
-            ? `${bounds(d.start)}  ·  ${d.label}  ·  ${bounds(d.end)}`
-            : d.label}
+          <strong>{d.label}</strong>
+          <span className="edge-cardinality">{d.cardinality}</span>
+          {props.selected && (
+            <small>
+              {participationLabel(d.start)} ↔ {participationLabel(d.end)}
+            </small>
+          )}
           {props.selected && d.relationshipId && (
             <span className="edge-actions nodrag nopan">
               <button

@@ -1,3 +1,4 @@
+import { isMany } from "../ast/participation";
 import type {
   Attribute,
   ERGraph,
@@ -258,7 +259,7 @@ export function erToRelational(g: ERGraph): RelationalSchema {
     } else {
       const ti =
         r.cardinality === "1:N"
-          ? r.endpoints.findIndex((p) => p.participation.max === "*")
+          ? r.endpoints.findIndex((p) => isMany(p.participation))
           : (r.foreignKeyEndpoint ?? 1);
       if (ti < 0 || ti > 1) throw Error("Invalid foreign key endpoint");
       const target = r.endpoints[ti],
@@ -278,7 +279,7 @@ export function erToRelational(g: ERGraph): RelationalSchema {
       if (r.cardinality === "1:1") tt.uniqueConstraints.push(cols);
       r.attributes.forEach((a) => add(tt, a, r.name + "_"));
     }
-    if (r.endpoints.some((p) => p.participation.min === 1))
+    if (r.endpoints.some((p) => p.participation.min > 0))
       warnings.push(
         `${r.name}: minimum participation on the referenced side needs cross-row enforcement; foreign keys enforce referencing-side participation only.`,
       );
@@ -293,6 +294,17 @@ export function erToRelational(g: ERGraph): RelationalSchema {
       "",
     );
   }
+  for (const r of g.relationships)
+    if (
+      r.endpoints.some(
+        (p) =>
+          p.participation.min > 1 ||
+          (typeof p.participation.max === "number" && p.participation.max > 1),
+      )
+    )
+      warnings.push(
+        `${r.name}: exact participant counts are modeled but need transaction-safe cross-row enforcement (for example constraint triggers). DDL enforces required referencing rows and one-side uniqueness, not finite many-side counts.`,
+      );
   for (const t of tables.values()) {
     if (!t.primaryKey.length) throw Error(`${t.name} has no primary key`);
     for (const c of t.columns) {

@@ -1703,3 +1703,369 @@ kbd {
 .entity-node .generated-column .attribute-type {
   color: #899db5;
 }
+:root {
+  --canvas-surface: #0d1017;
+  --edge-color: #8390a8;
+  --accent: #a88afa;
+  --panel-text: #e4e7ef;
+}
+[data-accent="blue"] {
+  --accent: #65a9f7;
+}
+[data-accent="teal"] {
+  --accent: #3bc6ad;
+}
+[data-accent="amber"] {
+  --accent: #f0bd57;
+}
+.button-primary {
+  background: var(--accent);
+}
+.button-primary:hover {
+  background: var(--accent);
+  filter: brightness(1.1);
+}
+.canvas-container,
+.react-flow {
+  background: var(--canvas-surface) !important;
+}
+.react-flow {
+  --xy-background-color: var(--canvas-surface);
+}
+.entity-node .entity-drag {
+  height: 50px;
+}
+.entity-chen .entity-drag {
+  height: 100%;
+}
+.entity-chen {
+  position: relative;
+}
+.routed-port {
+  z-index: 5 !important;
+  width: 14px !important;
+  height: 14px !important;
+  background: var(--edge-color) !important;
+  border: 3px solid var(--canvas-surface) !important;
+  border-radius: 50%;
+}
+.entity-node .routed-port {
+  background: var(--edge-color) !important;
+  width: 16px !important;
+  height: 16px !important;
+  border: 3px solid var(--canvas-surface) !important;
+}
+.entity-node .routed-port::after {
+  display: none;
+}
+.chen-attribute {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 12px;
+}
+.chen-attribute > span {
+  overflow-wrap: anywhere;
+}
+.chen-attribute .routed-port {
+  opacity: 1;
+}
+.isa-node {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.relationship-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 1px solid #74638e;
+  border-radius: 8px;
+  background: #201c2b;
+  color: var(--panel-text);
+}
+.relationship-card header {
+  height: 50px;
+  padding: 15px;
+  font-weight: 600;
+  border-bottom: 1px solid #40364e;
+}
+.relationship-card.is-selected {
+  outline: 2px solid var(--accent);
+}
+.relationship-card.chen-diamond {
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+}
+.diamond-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  fill: #292235;
+  stroke: #ac94ca;
+  stroke-width: 1.5;
+}
+.chen-diamond strong {
+  position: relative;
+  max-width: 120px;
+  overflow-wrap: anywhere;
+  text-align: center;
+  font-size: 13px;
+  pointer-events: none;
+}
+.relationship-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: transparent;
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  font-size: 12px;
+  text-align: left;
+  padding-right: 12px;
+}
+.relationship-field span {
+  overflow-wrap: anywhere;
+}
+.relationship-field small {
+  color: #9b8bab;
+}
+.relationship-field:hover {
+  background: #a88afa22;
+}
+.edge-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 8px;
+  max-width: 260px;
+  white-space: normal;
+  line-height: 1.4;
+  background: var(--canvas-surface);
+  color: var(--edge-color);
+  font-size: 11px;
+  pointer-events: all;
+}
+.edge-label strong {
+  font-weight: 500;
+}
+.edge-cardinality {
+  font-size: 10px;
+  opacity: 0.9;
+}
+.edge-label small {
+  flex-basis: 100%;
+}
+.chen-edge-label {
+  max-width: 235px;
+  pointer-events: all;
+  cursor: pointer;
+}
+.alignment-select {
+  background: #1b202b;
+  border: 1px solid #353e4b;
+  color: var(--panel-text);
+  border-radius: 6px;
+  padding: 8px;
+  max-width: 110px;
+  font-size: 12px;
+}
+.workspace-toolbar {
+  overflow-x: auto;
+  gap: 6px;
+}
+.workspace-toolbar > .button {
+  flex-shrink: 0;
+}
+.cardinality-summary,
+.participation-summary {
+  padding: 9px 11px;
+  border: 1px solid #57476e;
+  background: #2a2239;
+  border-radius: 6px;
+  color: #d5bdfa;
+  font-size: 12px;
+}
+.settings-panel h3 {
+  font-size: 16px;
+  margin: 14px 0;
+}
+.settings-panel .field-label {
+  font-size: 14px;
+}
+.settings-panel p {
+  font-size: 13px;
+}
+.panel-tabs button {
+  font-size: 10px;
+}
+.panel-tabs button svg {
+  width: 13px;
+}
+.panel-tabs button span {
+  display: inline;
+}
+.inspector-shell .panel-tabs {
+  padding: 0 5px;
+}
+[data-mode="light"] {
+  color-scheme: light;
+  --bg: #eef2f7;
+  --panel: #ffffff;
+  --panel-text: #172235;
+  --muted: #596a81;
+  --border: #b8c4d4;
+  --canvas-surface: #f4f7fb;
+  --edge-color: #425a78;
+}
+[data-mode="light"] body {
+  background: var(--bg);
+  color: var(--panel-text);
+}
+[data-mode="light"] .app-header,
+[data-mode="light"] .schema-sidebar,
+[data-mode="light"] .model-title,
+[data-mode="light"] .workspace-toolbar,
+[data-mode="light"] .status-bar,
+[data-mode="light"] .inspector {
+  background: #fff;
+  color: #253750;
+}
+[data-mode="light"] .entity-node {
+  background: #fff;
+  color: #24334a;
+  border-color: #9caec5;
+  box-shadow: 0 6px 20px #263d5615;
+}
+[data-mode="light"] .entity-name,
+[data-mode="light"] .attribute-name {
+  color: #263750;
+}
+[data-mode="light"] .attribute-type {
+  color: #52647e;
+}
+[data-mode="light"] .attribute-type option {
+  background: #fff;
+  color: #24334a;
+}
+[data-mode="light"] .entity-kind {
+  color: #5a6d82;
+}
+[data-mode="light"] .attribute-editor,
+[data-mode="light"] .field-label input,
+[data-mode="light"] .field-label select,
+[data-mode="light"] .entity-search,
+[data-mode="light"] .notation-switch,
+[data-mode="light"] .button-outline,
+[data-mode="light"] .alignment-select {
+  background: #f4f6fa;
+  color: #263750;
+  border-color: #b3bfd0;
+}
+[data-mode="light"] .attribute-editor-title,
+[data-mode="light"] .flag-grid label,
+[data-mode="light"] .field-label,
+[data-mode="light"] .muted,
+[data-mode="light"] .explorer-entity,
+[data-mode="light"] .schema-label,
+[data-mode="light"] .header-breadcrumb strong {
+  color: #435570;
+}
+[data-mode="light"] .explorer-entity.active,
+[data-mode="light"] .notation-switch button.active {
+  background: #e5ddf4;
+  color: #4b3479;
+}
+[data-mode="light"] .chen-attribute,
+[data-mode="light"] .isa-node,
+[data-mode="light"] .relationship-card {
+  background: #fff;
+  color: #2b3b52;
+}
+[data-mode="light"] .diamond-shape {
+  fill: #eee8f7;
+  stroke: #76579c;
+}
+[data-mode="light"] .chen-diamond {
+  background: transparent;
+}
+[data-mode="light"] .dialog-content,
+[data-mode="light"] .attribute-context-menu,
+[data-mode="light"] .project-card {
+  background: #fff;
+  color: #243750;
+  border-color: #a9b8cd;
+}
+[data-mode="light"] .command-input,
+[data-mode="light"] .project-browser-tools input {
+  background: #f4f6fa;
+  color: #243750;
+}
+[data-mode="light"] .dialog-overlay {
+  background: #273d5566;
+}
+[data-mode="light"] .panel-divider {
+  background: #bdc9d9;
+}
+[data-mode="light"] .floating-actions {
+  background: #fffe;
+  color: #263750;
+}
+[data-mode="light"] .button-ghost,
+[data-mode="light"] .panel-tabs button,
+[data-mode="light"] .header-breadcrumb button {
+  color: #425777;
+}
+[data-mode="light"] .participation-summary,
+[data-mode="light"] .cardinality-summary {
+  background: #eee7f9;
+  color: #4d376f;
+  border-color: #c4b3db;
+}
+[data-mode="light"] .edge-label {
+  border-color: #b7c4d4;
+}
+[data-mode="light"] .notice {
+  background: #fff;
+  color: #253750;
+  border-color: #9facbf;
+}
+[data-contrast="high"] {
+  --edge-color: #d8e5ff;
+  --border: #9baecc;
+  --muted: #d0daeb;
+}
+[data-mode="light"][data-contrast="high"] {
+  --edge-color: #152e51;
+  --border: #365072;
+  --muted: #1c3553;
+}
+[data-contrast="high"] .entity-node,
+[data-contrast="high"] .attribute-editor,
+[data-contrast="high"] .inspector,
+[data-contrast="high"] .schema-sidebar,
+[data-contrast="high"] .field-label input,
+[data-contrast="high"] .field-label select {
+  border-color: var(--border);
+}
+[data-contrast="high"] .muted,
+[data-contrast="high"] .attribute-type,
+[data-contrast="high"] .column-heading,
+[data-contrast="high"] .field-label {
+  color: var(--muted);
+}
+[data-contrast="high"] .edge-label {
+  border-color: var(--edge-color);
+}

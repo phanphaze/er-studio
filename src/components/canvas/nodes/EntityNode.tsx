@@ -23,11 +23,19 @@ import {
   type DataType,
   type RelationalColumn,
 } from "@/lib/ast/types";
+import { ConnectionPorts } from "./ConnectionPorts";
+import type { Port } from "@/lib/layout/geometry";
 import { Button } from "@/components/ui/button";
 import { attributeRows } from "@/lib/ast/attributes";
 import { AttributeMenu } from "@/components/ui/attribute-menu";
 export type EntityFlowNode = Node<
-  { entity: Entity; foreignColumns?: RelationalColumn[] },
+  {
+    entity: Entity;
+    foreignColumns?: RelationalColumn[];
+    ports?: Port[];
+    layoutWidth?: number;
+    layoutHeight?: number;
+  },
   "entity"
 >;
 export const EntityNode = memo(function EntityNode({
@@ -92,7 +100,8 @@ export const EntityNode = memo(function EntityNode({
       style={
         {
           "--entity-color": entity.color,
-          width: nodeWidth,
+          width: data.layoutWidth ?? nodeWidth,
+          height: data.layoutHeight,
         } as React.CSSProperties
       }
     >
@@ -125,6 +134,7 @@ export const EntityNode = memo(function EntityNode({
           <Trash2 size={15} />
         </Button>
       </NodeToolbar>
+      <ConnectionPorts nodeId={id} ports={data.ports} />
       <Handle id="in" type="target" position={Position.Left} />
       <Handle id="out" type="source" position={Position.Right} />
       <header className="entity-drag">

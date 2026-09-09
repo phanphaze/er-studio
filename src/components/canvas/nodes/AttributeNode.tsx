@@ -1,11 +1,16 @@
 "use client";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
+import { ConnectionPorts } from "./ConnectionPorts";
+import type { Port } from "@/lib/layout/geometry";
 import { useERStore } from "@/store/useERStore";
 import { AttributeMenu } from "@/components/ui/attribute-menu";
 import type { Attribute } from "@/lib/ast/types";
 export function AttributeNode({
   data,
-}: NodeProps<Node<{ attribute: Attribute; ownerId: string }, "attribute">>) {
+  id,
+}: NodeProps<
+  Node<{ attribute: Attribute; ownerId: string; ports?: Port[] }, "attribute">
+>) {
   const a = data.attribute;
   return (
     <AttributeMenu
@@ -29,6 +34,7 @@ export function AttributeNode({
         }}
         className={`chen-attribute ${a.isMultivalued ? "multivalued" : ""} ${a.isDerived ? "derived" : ""}`}
       >
+        <ConnectionPorts nodeId={id} ports={data.ports} />
         <Handle id="in" type="target" position={Position.Bottom} />
         <span
           style={{

@@ -61,8 +61,8 @@ export interface Entity {
   color: string;
 }
 export interface Participation {
-  min: 0 | 1;
-  max: 1 | "*";
+  min: number;
+  max: number | "*";
 }
 export interface RelationshipEndpoint {
   entityId: ID;
@@ -98,6 +98,7 @@ export interface Specialization {
   position: Point;
 }
 export interface ERGraph {
+  layouts?: Partial<Record<Notation, Record<ID, Point>>>;
   version: 1;
   name: string;
   entities: Entity[];

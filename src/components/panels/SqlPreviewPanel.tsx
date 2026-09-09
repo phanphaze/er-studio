@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { loader } from "@monaco-editor/react";
 loader.config({ paths: { vs: "/monaco/vs" } });
 import { Copy, Download, Check, Code2 } from "lucide-react";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { useERStore } from "@/store/useERStore";
 import { compileGraph } from "@/lib/compiler/sqlGenerator";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export function downloadText(text: string, name: string, type = "text/plain") {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function SqlPreviewPanel() {
+  const mode = useSettingsStore((s) => s.mode);
   const graph = useERStore((s) => s.graph);
   const result = useMemo(() => compileGraph(graph), [graph]);
   const [copied, setCopied] = useState(false);
@@ -67,7 +69,7 @@ export function SqlPreviewPanel() {
         <Editor
           height="100%"
           language="sql"
-          theme="vs-dark"
+          theme={mode === "light" ? "light" : "vs-dark"}
           value={result.sql}
           loading={<pre className="sql-fallback">{result.sql}</pre>}
           options={{

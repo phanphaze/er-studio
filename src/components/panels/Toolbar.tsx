@@ -9,6 +9,7 @@ import {
   Search,
   X,
   GitBranch,
+  WandSparkles,
 } from "lucide-react";
 import { useERStore } from "@/store/useERStore";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,14 @@ import {
 import { compileGraph } from "@/lib/compiler/sqlGenerator";
 import type { Notation } from "@/lib/ast/types";
 import { downloadText } from "./SqlPreviewPanel";
-export function Toolbar() {
+export function Toolbar({
+  onOrganize,
+  onAlign,
+}: {
+  onOrganize: () => Promise<void> | undefined;
+  onAlign: (mode: string) => void;
+}) {
+  const [organizing, setOrganizing] = useState(false);
   const graph = useERStore((s) => s.graph);
   const notation = useERStore((s) => s.notation);
   const past = useERStore((s) => s.past.length);
@@ -109,6 +117,42 @@ export function Toolbar() {
           <Redo2 size={17} />
         </Button>
         <div className="toolbar-spacer" />
+        <select
+          className="alignment-select"
+          aria-label="Align selected entities, or all entities"
+          value=""
+          onChange={(e) => onAlign(e.target.value)}
+        >
+          <option value="" disabled>
+            Align…
+          </option>
+          <option value="top">Top edges</option>
+          <option value="middle">Horizontal centers</option>
+          <option value="bottom">Bottom edges</option>
+          <option value="left">Left edges</option>
+          <option value="center">Vertical centers</option>
+          <option value="right">Right edges</option>
+          <option value="horizontal">Distribute horizontally</option>
+          <option value="vertical">Distribute vertically</option>
+        </select>
+        <Button
+          variant="outline"
+          disabled={organizing}
+          title="Organize the current diagram"
+          onClick={async () => {
+            setOrganizing(true);
+            try {
+              await onOrganize();
+            } catch (e) {
+              setNotice(e instanceof Error ? e.message : "Layout failed");
+            } finally {
+              setOrganizing(false);
+            }
+          }}
+        >
+          <WandSparkles size={15} />
+          {organizing ? "Organizing…" : "Auto-organize"}
+        </Button>
         <Button
           variant="ghost"
           className="command-button"
@@ -232,17 +276,15 @@ export function Toolbar() {
           <Button
             disabled={!parent || !children.length}
             onClick={() => {
-              useERStore
-                .getState()
-                .addSpecialization({
-                  name: "specialization",
-                  superclassId: parent,
-                  subclassIds: children,
-                  disjointness: "disjoint",
-                  completeness: "partial",
-                  strategy: "table-per-type",
-                  position: { x: 400, y: 400 },
-                });
+              useERStore.getState().addSpecialization({
+                name: "specialization",
+                superclassId: parent,
+                subclassIds: children,
+                disjointness: "disjoint",
+                completeness: "partial",
+                strategy: "table-per-type",
+                position: { x: 400, y: 400 },
+              });
               setIsa(false);
             }}
           >

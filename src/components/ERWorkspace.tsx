@@ -29,9 +29,11 @@ import {
   DialogDescription,
 } from "./ui/dialog";
 import { useERStore } from "@/store/useERStore";
+import { cardinalityLabel } from "@/lib/ast/participation";
 import { parseModel } from "@/lib/ast/serialization";
 import { downloadText } from "./panels/SqlPreviewPanel";
 import { compileGraph } from "@/lib/compiler/sqlGenerator";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { useProjects } from "@/lib/projects/useProjects";
 import { ProjectBrowser } from "./projects/ProjectBrowser";
 import { PanelDivider } from "./layout/PanelDivider";
@@ -39,6 +41,19 @@ export function ERWorkspace() {
   const graph = useERStore((s) => s.graph),
     selection = useERStore((s) => s.selection);
   const projects = useProjects();
+  const appearance = useSettingsStore();
+  useEffect(() => {
+    appearance.initialize();
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.mode = appearance.mode;
+    document.documentElement.dataset.accent = appearance.accent;
+    document.documentElement.dataset.contrast = appearance.contrast;
+    document.documentElement.classList.toggle(
+      "dark",
+      appearance.mode === "dark",
+    );
+  }, [appearance.mode, appearance.accent, appearance.contrast]);
   const attributeFocus = useERStore((s) => s.attributeFocus);
   useEffect(() => {
     if (attributeFocus) setRightWidth((w) => (w === 0 ? 324 : w));
@@ -390,7 +405,7 @@ export function ERWorkspace() {
                     >
                       <GitBranch size={14} />
                       <span>{r.name}</span>
-                      <small>{r.cardinality}</small>
+                      <small>{cardinalityLabel(r.cardinality)}</small>
                     </button>
                   ))}
                 </div>
@@ -455,7 +470,10 @@ export function ERWorkspace() {
                 )}
               </Button>
             </div>
-            <Toolbar />
+            <Toolbar
+              onOrganize={() => canvasRef.current?.organize()}
+              onAlign={(mode) => canvasRef.current?.align(mode)}
+            />
             <div className="canvas-container">
               <ERCanvas actionsRef={canvasRef} />
             </div>
