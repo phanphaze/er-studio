@@ -48,6 +48,47 @@ export function generateSQL(schema: RelationalSchema): string {
         `CREATE INDEX ${quote(indexName)} ON ${quote(t.name)} (${f.columns.map(quote).join(", ")});`,
       );
     }
+  // Bounded occupancy slots use UNIQUE constraints, so concurrent writes cannot
+  // exceed a limit. A conflicting concurrent allocation is rejected and retriable.
+  let boundIndex = 0;
+  for (const t of schema.tables)
+    for (const b of t.boundedCardinalities ?? []) {
+      if (!Number.isSafeInteger(b.max) || b.max < 2 || b.max > 1000000)
+        throw Error("Invalid cardinality bound");
+      const suffix = ++boundIndex;
+      let name = `er_bound_${suffix}`;
+      while (usedNames.has(name)) name += "_";
+      usedNames.add(name);
+      const fn = quote(name),
+        slot = quote(b.slot);
+      let delimiter = "$er_bound$";
+      while (JSON.stringify(t).includes(delimiter))
+        delimiter = delimiter.slice(0, -1) + "_$";
+      const nulls = b.columns
+        .map((c) => `NEW.${quote(c)} IS NULL`)
+        .join(" OR ");
+      const same = b.columns
+        .map((c) => `NEW.${quote(c)} IS NOT DISTINCT FROM OLD.${quote(c)}`)
+        .join(" AND ");
+      const match = b.columns
+        .map((c) => `existing.${quote(c)} = NEW.${quote(c)}`)
+        .join(" AND ");
+      statements.push(`-- Upper bound ${b.max}. Retry a conflicting concurrent allocation.
+CREATE FUNCTION ${fn}() RETURNS trigger LANGUAGE plpgsql AS ${delimiter}
+BEGIN
+  IF ${nulls} THEN NEW.${slot} := NULL; RETURN NEW; END IF;
+  IF TG_OP = 'UPDATE' THEN
+    IF ${same} THEN NEW.${slot} := OLD.${slot}; RETURN NEW; END IF;
+  END IF;
+  SELECT candidate INTO NEW.${slot} FROM generate_series(1, ${b.max}) AS candidate
+  WHERE NOT EXISTS (SELECT 1 FROM ${quote(t.name)} existing WHERE ${match} AND existing.${slot} = candidate)
+  ORDER BY candidate LIMIT 1;
+  IF NEW.${slot} IS NULL THEN RAISE EXCEPTION 'Relationship maximum exceeded' USING ERRCODE = '23514'; END IF;
+  RETURN NEW;
+END;
+${delimiter};
+CREATE TRIGGER ${fn} BEFORE INSERT OR UPDATE ON ${quote(t.name)} FOR EACH ROW EXECUTE FUNCTION ${fn}();`);
+    }
   statements.push("COMMIT;");
   return statements.join("\n\n") + "\n";
 }

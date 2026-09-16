@@ -77,6 +77,10 @@ it("auto-organizes deterministically, saves notation layouts, and supports undo"
   const a = await organize(p.nodes, p.edges),
     b = await organize(p.nodes, p.edges);
   expect(a).toEqual(b);
+  const entityXs = p.nodes
+    .filter((n) => n.type === "entity")
+    .map((n) => a[n.id].x);
+  expect(new Set(entityXs).size).toBeGreaterThan(1);
   g.layouts = { chen: a };
   expect(parseModel(JSON.stringify(g)).layouts).toEqual(g.layouts);
   const arranged = projectGraph(g, "chen", null);

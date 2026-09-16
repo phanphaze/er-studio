@@ -29,6 +29,7 @@ export function ConnectionPorts({
             }[p.side]
           }
           className="routed-port"
+          isConnectable={false}
           style={
             p.side === "left" || p.side === "right"
               ? { top: `${p.fraction * 100}%` }

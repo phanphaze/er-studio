@@ -69,6 +69,7 @@ export interface RelationshipEndpoint {
   role: string;
   participation: Participation;
   attributeId?: ID;
+  entityParticipation?: "total" | "partial";
 }
 export type ReferentialAction =
   "CASCADE" | "RESTRICT" | "NO ACTION" | "SET NULL";
@@ -106,6 +107,7 @@ export interface ERGraph {
   specializations: Specialization[];
 }
 export interface RelationalColumn {
+  internal?: boolean;
   name: string;
   type: DataType;
   nullable: boolean;
@@ -122,6 +124,7 @@ export interface ForeignKey {
   onUpdate: ReferentialAction;
 }
 export interface RelationalTable {
+  boundedCardinalities?: { columns: string[]; max: number; slot: string }[];
   name: string;
   columns: RelationalColumn[];
   primaryKey: string[];

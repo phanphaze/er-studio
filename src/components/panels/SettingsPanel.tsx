@@ -46,6 +46,29 @@ export function SettingsPanel() {
         Appearance is remembered on this device. Entity colors remain
         configurable in Properties.
       </p>
+      <h3>Diagram notation</h3>
+      <label className="field-label">
+        Cardinality display
+        <select
+          value={s.cardinalityDisplay}
+          onChange={(e) =>
+            s.setPreferences({
+              cardinalityDisplay: e.target.value as typeof s.cardinalityDisplay,
+            })
+          }
+        >
+          <option value="words">Words — one to many</option>
+          <option value="minmax">Min–max — (0, 5)</option>
+          <option value="arrows">Arrows — single / double arrowhead</option>
+          <option value="crow">Crow’s foot</option>
+          <option value="dots">Dot notation — 0..5</option>
+        </select>
+      </label>
+      <p className="muted">
+        Arrow key: one head means at most one; two heads mean many. Exact finite
+        limits remain labeled. Dot notation uses numeric ranges. Double lines
+        mean total entity participation, independently of the maximum count.
+      </p>
       <h3>Diagram legend</h3>
       <p className="muted">
         One to one / one to many describes the maximum at both ends. Mandatory

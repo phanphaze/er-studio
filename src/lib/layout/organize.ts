@@ -1,9 +1,66 @@
 import type { Node, Edge } from "@xyflow/react";
+import { freePosition, type Box } from "./geometry";
 import type { Point } from "../ast/types";
 export async function organize(
   nodes: Node[],
   edges: Edge[],
 ): Promise<Record<string, Point>> {
+  const core = nodes.filter((n) => n.type !== "attribute");
+  const clusters = new Map<
+    string,
+    { width: number; height: number; positions: Record<string, Point> }
+  >();
+  for (const n of core) {
+    const attrs = nodes.filter(
+      (a) => a.type === "attribute" && a.data.ownerId === n.id,
+    );
+    const w = n.width ?? 180,
+      h = n.height ?? 80;
+    const boxes: Box[] = [
+      { id: n.id, x: -w / 2, y: -h / 2, width: w, height: h },
+    ];
+    const positions: Record<string, Point> = {
+      [n.id]: { x: -w / 2, y: -h / 2 },
+    };
+    const radius = Math.max(240, attrs.length * 55);
+    attrs.forEach((a, i) => {
+      const angle = (2 * Math.PI * i) / Math.max(1, attrs.length) - Math.PI / 2;
+      const width = a.width ?? 220,
+        height = a.height ?? 70;
+      const pos = freePosition(
+        {
+          id: a.id,
+          x: Math.cos(angle) * radius - width / 2,
+          y: Math.sin(angle) * radius - height / 2,
+          width,
+          height,
+        },
+        boxes,
+      );
+      boxes.push({ id: a.id, ...pos, width, height });
+      positions[a.id] = pos;
+    });
+    const x = Math.min(...boxes.map((b) => b.x)),
+      y = Math.min(...boxes.map((b) => b.y));
+    const width = Math.max(...boxes.map((b) => b.x + b.width)) - x;
+    const height = Math.max(...boxes.map((b) => b.y + b.height)) - y;
+    for (const pos of Object.values(positions)) {
+      pos.x -= x;
+      pos.y -= y;
+    }
+    clusters.set(n.id, { width, height, positions });
+  }
+  const seenRelationships = new Set<string>();
+  const coreEdges = edges
+    .filter((e) => !e.data?.attributeLink)
+    .map((e) => {
+      if (core.some((n) => n.id === e.target && n.type === "relationship")) {
+        if (seenRelationships.has(e.target))
+          return { ...e, source: e.target, target: e.source };
+        seenRelationships.add(e.target);
+      }
+      return e;
+    });
   const { default: ELK } = await import("elkjs/lib/elk.bundled.js");
   const elk = new ELK();
   const graph = await elk.layout({
@@ -19,26 +76,27 @@ export async function organize(
       "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
       "elk.randomSeed": "1",
     },
-    children: nodes.map((n) => ({
+    children: core.map((n) => ({
       id: n.id,
-      width: n.width ?? 180,
-      height: n.height ?? 80,
+      width: clusters.get(n.id)!.width,
+      height: clusters.get(n.id)!.height,
     })),
-    edges: edges.map((e) => ({
+    edges: coreEdges.map((e) => ({
       id: e.id,
       sources: [e.source],
       targets: [e.target],
     })),
   });
-  return Object.fromEntries(
-    (graph.children ?? []).map((n) => [
-      n.id,
-      {
-        x: Math.round((n.x ?? 0) / 10) * 10,
-        y: Math.round((n.y ?? 0) / 10) * 10,
-      },
-    ]),
-  );
+  const result: Record<string, Point> = {};
+  for (const n of graph.children ?? []) {
+    for (const [id, p] of Object.entries(clusters.get(n.id)!.positions)) {
+      result[id] = {
+        x: Math.round(((n.x ?? 0) + p.x) / 10) * 10,
+        y: Math.round(((n.y ?? 0) + p.y) / 10) * 10,
+      };
+    }
+  }
+  return result;
 }
 export function aligned(nodes: Node[], mode: string): Record<string, Point> {
   if (nodes.length < 2) return {};

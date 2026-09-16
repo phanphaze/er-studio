@@ -364,6 +364,13 @@ export const useERStore = create<ERState>()(
             r.endpoints[1].participation,
             r.endpoints[0].participation,
           ];
+          [
+            r.endpoints[0].entityParticipation,
+            r.endpoints[1].entityParticipation,
+          ] = [
+            r.endpoints[1].entityParticipation,
+            r.endpoints[0].entityParticipation,
+          ];
           if (r.cardinality === "1:1")
             r.foreignKeyEndpoint = 1 - (r.foreignKeyEndpoint ?? 1);
         }

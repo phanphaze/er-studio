@@ -30,7 +30,10 @@ import {
   type ReferentialAction,
   type RelationalColumn,
 } from "@/lib/ast/types";
-import { SettingsPanel } from "./SettingsPanel";
+import {
+  relationshipCardinality,
+  totalParticipation,
+} from "@/lib/ast/participation";
 import { SqlPreviewPanel } from "./SqlPreviewPanel";
 function TextField({
   label,
@@ -321,7 +324,7 @@ function ParticipationControl({
   return (
     <>
       <label className="field-label">
-        Participation
+        Allowed count for this combination
         <select
           value={preset}
           onChange={(e) => {
@@ -436,9 +439,16 @@ function RelationshipEditor({ r }: { r: Relationship }) {
             onChange={(e) => update({ ownerEntityId: e.target.value })}
           >
             <option value="">Select owner</option>
+
             <div className="cardinality-summary">
-              {cardinalityLabel(r.cardinality)}
+              {relationshipCardinality(r.endpoints)}
             </div>
+            {r.endpoints.length > 2 && (
+              <p className="muted">
+                Each limit applies to one fixed combination of all other
+                participants, not a pairwise relationship.
+              </p>
+            )}
             {r.endpoints.map((p, i) => (
               <option key={i} value={p.entityId}>
                 {
@@ -450,6 +460,15 @@ function RelationshipEditor({ r }: { r: Relationship }) {
             ))}
           </select>
         </label>
+      )}
+      <div className="cardinality-summary">
+        {relationshipCardinality(r.endpoints)}
+      </div>
+      {r.endpoints.length > 2 && (
+        <p className="muted">
+          Each limit applies to one fixed combination of all other participants,
+          not a pairwise relationship.
+        </p>
       )}
       {r.endpoints.map((p, i) => (
         <div className="attribute-editor" key={i}>
@@ -472,7 +491,7 @@ function RelationshipEditor({ r }: { r: Relationship }) {
             }
           />
           <p className="muted">
-            For each{" "}
+            For each fixed combination of{" "}
             {r.endpoints
               .filter((_, j) => j !== i)
               .map(
@@ -491,6 +510,42 @@ function RelationshipEditor({ r }: { r: Relationship }) {
             }{" "}
             may participate?
           </p>
+          <label className="field-label">
+            Entity participation
+            <select
+              value={totalParticipation(r.endpoints, i) ? "total" : "partial"}
+              onChange={(e) => {
+                const total = e.target.value === "total";
+                update({
+                  endpoints: r.endpoints.map((ep, j) =>
+                    j === i
+                      ? {
+                          ...ep,
+                          entityParticipation: total ? "total" : "partial",
+                        }
+                      : r.endpoints.length === 2
+                        ? {
+                            ...ep,
+                            participation: {
+                              ...ep.participation,
+                              min: total
+                                ? Math.max(1, ep.participation.min)
+                                : 0,
+                            },
+                          }
+                        : ep,
+                  ),
+                });
+              }}
+            >
+              <option value="partial">
+                Partial — an entity may have no relationship (single line)
+              </option>
+              <option value="total">
+                Total — every entity must participate (double line)
+              </option>
+            </select>
+          </label>
           <ParticipationControl
             value={p.participation}
             onChange={(participation) => {
@@ -539,6 +594,15 @@ function RelationshipEditor({ r }: { r: Relationship }) {
               update({ foreignKeyEndpoint: Number(e.target.value) })
             }
           >
+            <div className="cardinality-summary">
+              {relationshipCardinality(r.endpoints)}
+            </div>
+            {r.endpoints.length > 2 && (
+              <p className="muted">
+                Each limit applies to one fixed combination of all other
+                participants, not a pairwise relationship.
+              </p>
+            )}
             {r.endpoints.map((p, i) => (
               <option key={i} value={i}>
                 {p.role || p.entityId}
@@ -578,6 +642,12 @@ function RelationshipEditor({ r }: { r: Relationship }) {
       ))}
       <Button
         variant="outline"
+        disabled={r.endpoints.length !== 2}
+        title={
+          r.endpoints.length !== 2
+            ? "Edit each participant independently for ternary relationships"
+            : "Swap the two endpoint limits"
+        }
         onClick={() => useERStore.getState().invertCardinality(r.id)}
       >
         <ArrowLeftRight size={15} /> Invert cardinality
@@ -651,10 +721,6 @@ export function InspectorPanel() {
           <TabsTrigger value="sql">
             <Code2 size={15} /> SQL
           </TabsTrigger>
-          <TabsTrigger value="settings" title="Settings">
-            <Settings2 size={15} />
-            <span>Settings</span>
-          </TabsTrigger>
         </TabsList>
         <TabsContent value="properties" className="panel-scroll">
           {e ? (
@@ -723,7 +789,7 @@ export function InspectorPanel() {
 
               {result.schema.tables
                 .find((t) => t.name === e.name)
-                ?.columns.filter((c) => !c.sourceAttributeId)
+                ?.columns.filter((c) => !c.sourceAttributeId && !c.internal)
                 .map((c) => (
                   <GeneratedFieldEditor
                     ownerId={e.id}
@@ -819,9 +885,6 @@ export function InspectorPanel() {
         </TabsContent>
         <TabsContent value="sql" className="sql-tab">
           <SqlPreviewPanel />
-        </TabsContent>
-        <TabsContent value="settings" className="panel-scroll">
-          <SettingsPanel />
         </TabsContent>
       </Tabs>
     </aside>

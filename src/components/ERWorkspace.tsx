@@ -1,6 +1,7 @@
 "use client";
 import {
   Database,
+  Settings,
   ChevronDown,
   ChevronRight,
   Download,
@@ -29,10 +30,11 @@ import {
   DialogDescription,
 } from "./ui/dialog";
 import { useERStore } from "@/store/useERStore";
-import { cardinalityLabel } from "@/lib/ast/participation";
+import { relationshipCardinality } from "@/lib/ast/participation";
 import { parseModel } from "@/lib/ast/serialization";
 import { downloadText } from "./panels/SqlPreviewPanel";
 import { compileGraph } from "@/lib/compiler/sqlGenerator";
+import { SettingsPanel } from "./panels/SettingsPanel";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useProjects } from "@/lib/projects/useProjects";
 import { ProjectBrowser } from "./projects/ProjectBrowser";
@@ -42,6 +44,7 @@ export function ERWorkspace() {
     selection = useERStore((s) => s.selection);
   const projects = useProjects();
   const appearance = useSettingsStore();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   useEffect(() => {
     appearance.initialize();
   }, []);
@@ -154,6 +157,15 @@ export function ERWorkspace() {
           )}
         </div>
         <div className="header-actions">
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Settings"
+            aria-label="Open settings"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings size={18} />
+          </Button>
           <input
             ref={fileRef}
             hidden
@@ -405,7 +417,7 @@ export function ERWorkspace() {
                     >
                       <GitBranch size={14} />
                       <span>{r.name}</span>
-                      <small>{cardinalityLabel(r.cardinality)}</small>
+                      <small>{relationshipCardinality(r.endpoints)}</small>
                     </button>
                   ))}
                 </div>
@@ -500,6 +512,15 @@ export function ERWorkspace() {
           )}
         </div>
       )}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent>
+          <DialogTitle>Settings</DialogTitle>
+          <DialogDescription className="muted">
+            Appearance and diagram notation
+          </DialogDescription>
+          <SettingsPanel />
+        </DialogContent>
+      </Dialog>
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
         <DialogContent>
           <DialogTitle>New project</DialogTitle>

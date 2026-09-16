@@ -20,3 +20,27 @@ export function participationLabel(p: Participation): string {
   if (p.min === p.max) return `Required · exactly ${p.min}`;
   return `${p.min === 0 ? "Optional" : "Required"} · ${p.min} to ${p.max}`;
 }
+
+export function relationshipCardinality(
+  endpoints: RelationshipEndpoint[],
+): string {
+  return endpoints
+    .map((p) =>
+      p.participation.max === "*"
+        ? "many"
+        : p.participation.max === 1
+          ? "one"
+          : String(p.participation.max),
+    )
+    .join(" to ");
+}
+export function totalParticipation(
+  endpoints: RelationshipEndpoint[],
+  index: number,
+): boolean {
+  const p = endpoints[index];
+  if (p.entityParticipation) return p.entityParticipation === "total";
+  return endpoints.length === 2
+    ? endpoints[1 - index].participation.min > 0
+    : false;
+}

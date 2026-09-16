@@ -5,6 +5,8 @@ import {
   getSmoothStepPath,
   type EdgeProps,
 } from "@xyflow/react";
+import { CardinalityMarks, compactBounds } from "./CardinalityMarks";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { useERStore } from "@/store/useERStore";
 import { ArrowLeftRight, Trash2 } from "lucide-react";
 import { isMany, participationLabel } from "@/lib/ast/participation";
@@ -20,6 +22,8 @@ export interface ERLinkData extends Record<string, unknown> {
   relationshipId?: string;
   specializationId?: string;
   mandatory?: boolean;
+  endpoint?: boolean;
+  endpointName?: string;
   attributeLink?: boolean;
   cardinality?: string;
   points?: Point[];
@@ -27,6 +31,11 @@ export interface ERLinkData extends Record<string, unknown> {
 export const bounds = participationLabel;
 export function CrowsFootEdge(props: EdgeProps) {
   const d = props.data as ERLinkData;
+  const display = useSettingsStore((s) => s.cardinalityDisplay);
+  const marked =
+    display === "arrows" ||
+    display === "crow" ||
+    (display === "words" && !d.uml);
   let [path, x, y] = getSmoothStepPath({ ...props, borderRadius: 16 });
   if (!d.points && props.source === props.target) {
     path = `M ${props.sourceX} ${props.sourceY} C ${props.sourceX + 190} ${props.sourceY - 240}, ${props.targetX - 190} ${props.targetY - 240}, ${props.targetX} ${props.targetY}`;
@@ -39,43 +48,15 @@ export function CrowsFootEdge(props: EdgeProps) {
     x = label.x;
     y = label.y;
   }
-  const marker = (p: Participation, suffix: string) => (
-    <marker
-      id={`${props.id}-${suffix}`}
-      viewBox="0 -9 24 18"
-      refX="1"
-      refY="0"
-      markerWidth="24"
-      markerHeight="18"
-      orient="auto-start-reverse"
-      markerUnits="userSpaceOnUse"
-    >
-      {isMany(p) ? <path d="M 2,-7 L 16,0 L 2,7" /> : <path d="M 7,-7 V 7" />}
-      {p.min === 0 ? (
-        <circle cx="20" cy="0" r="3" fill="var(--canvas-surface,#13161d)" />
-      ) : (
-        <path d="M 18,-7 V 7" />
-      )}
-    </marker>
-  );
   return (
     <>
-      <defs>
-        <g
-          stroke={props.selected ? "#b59aff" : "#6b778e"}
-          fill="none"
-          strokeWidth="1.5"
-        >
-          {marker(d.start, "s")}
-          {marker(d.end, "e")}
-        </g>
-      </defs>
+      <CardinalityMarks id={props.id} start={d.start} end={d.end} />
       <BaseEdge
         {...props}
         interactionWidth={30}
         path={path}
-        markerStart={d.uml ? undefined : `url(#${props.id}-s)`}
-        markerEnd={d.uml ? undefined : `url(#${props.id}-e)`}
+        markerStart={marked ? `url(#${props.id}-s)` : undefined}
+        markerEnd={marked ? `url(#${props.id}-e)` : undefined}
         style={{
           stroke: props.selected
             ? "var(--accent)"
@@ -100,7 +81,11 @@ export function CrowsFootEdge(props: EdgeProps) {
           }}
         >
           <strong>{d.label}</strong>
-          <span className="edge-cardinality">{d.cardinality}</span>
+          <span className="edge-cardinality">
+            {display === "words"
+              ? d.cardinality
+              : `${compactBounds(d.start, display)} ↔ ${compactBounds(d.end, display)}`}
+          </span>
           {props.selected && (
             <small>
               {participationLabel(d.start)} ↔ {participationLabel(d.end)}

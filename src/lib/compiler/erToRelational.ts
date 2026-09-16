@@ -1,4 +1,4 @@
-import { isMany } from "../ast/participation";
+import { isMany, totalParticipation } from "../ast/participation";
 import type {
   Attribute,
   ERGraph,
@@ -28,6 +28,19 @@ export function erToRelational(g: ERGraph): RelationalSchema {
     };
     tables.set(name, t);
     return t;
+  };
+  const bound = (t: RelationalTable, columns: string[], max: number) => {
+    let slot = "er_limit_slot_" + ((t.boundedCardinalities?.length ?? 0) + 1);
+    while (t.columns.some((c) => c.name === slot)) slot += "_";
+    t.columns.push({
+      name: slot,
+      type: "integer",
+      nullable: true,
+      internal: true,
+    });
+    t.checks.push(`${quote(slot)} BETWEEN 1 AND ${max}`);
+    t.uniqueConstraints.push([...columns, slot]);
+    (t.boundedCardinalities ??= []).push({ columns, max, slot });
   };
   const add = (
     t: RelationalTable,
@@ -256,6 +269,14 @@ export function erToRelational(g: ERGraph): RelationalSchema {
             );
         });
       r.attributes.forEach((a) => add(t, a));
+      r.endpoints.forEach((p, i) => {
+        if (typeof p.participation.max === "number" && p.participation.max > 1)
+          bound(
+            t,
+            roleColumns.filter((_, j) => j !== i).flat(),
+            p.participation.max,
+          );
+      });
     } else {
       const ti =
         r.cardinality === "1:N"
@@ -270,7 +291,7 @@ export function erToRelational(g: ERGraph): RelationalSchema {
         tt,
         st,
         r.name + "_" + (source.role || st.name),
-        source.participation.min === 0,
+        !totalParticipation(r.endpoints, ti),
         false,
         r.onDelete,
         r.onUpdate,
@@ -278,8 +299,17 @@ export function erToRelational(g: ERGraph): RelationalSchema {
       );
       if (r.cardinality === "1:1") tt.uniqueConstraints.push(cols);
       r.attributes.forEach((a) => add(tt, a, r.name + "_"));
+      if (
+        typeof target.participation.max === "number" &&
+        target.participation.max > 1
+      )
+        bound(tt, cols, target.participation.max);
     }
-    if (r.endpoints.some((p) => p.participation.min > 0))
+    if (
+      r.endpoints.some(
+        (p) => p.participation.min > 0 || p.entityParticipation === "total",
+      )
+    )
       warnings.push(
         `${r.name}: minimum participation on the referenced side needs cross-row enforcement; foreign keys enforce referencing-side participation only.`,
       );
@@ -295,15 +325,9 @@ export function erToRelational(g: ERGraph): RelationalSchema {
     );
   }
   for (const r of g.relationships)
-    if (
-      r.endpoints.some(
-        (p) =>
-          p.participation.min > 1 ||
-          (typeof p.participation.max === "number" && p.participation.max > 1),
-      )
-    )
+    if (r.endpoints.some((p) => p.participation.min > 1))
       warnings.push(
-        `${r.name}: exact participant counts are modeled but need transaction-safe cross-row enforcement (for example constraint triggers). DDL enforces required referencing rows and one-side uniqueness, not finite many-side counts.`,
+        `${r.name}: exact participant counts are modeled but need transaction-safe cross-row enforcement (for example constraint triggers). DDL enforces upper bounds, required referencing rows and one-side uniqueness; universal minimum counts need additional enforcement.`,
       );
   for (const t of tables.values()) {
     if (!t.primaryKey.length) throw Error(`${t.name} has no primary key`);

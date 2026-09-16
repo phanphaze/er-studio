@@ -2,7 +2,11 @@ import type { Node, Edge } from "@xyflow/react";
 import type { Attribute, ERGraph, Notation, Selection } from "../ast/types";
 import { attributeRows } from "../ast/attributes";
 import { compileGraph } from "../compiler/sqlGenerator";
-import { cardinalityLabel, participationLabel } from "../ast/participation";
+import {
+  relationshipCardinality,
+  totalParticipation,
+  participationLabel,
+} from "../ast/participation";
 import {
   freePosition,
   facing,
@@ -48,7 +52,7 @@ export function projectGraph(
     const fks =
       compiled.schema.tables
         .find((t) => t.name === e.name)
-        ?.columns.filter((c) => !c.sourceAttributeId) ?? [];
+        ?.columns.filter((c) => !c.sourceAttributeId && !c.internal) ?? [];
     const width =
       notation === "chen"
         ? Math.max(220, Math.min(360, e.name.length * 9 + 70))
@@ -117,7 +121,7 @@ export function projectGraph(
       identifying: r.type === "identifying",
       uml: notation === "uml",
       relationshipId: r.id,
-      cardinality: cardinalityLabel(r.cardinality),
+      cardinality: relationshipCardinality(r.endpoints),
     };
     if (notation === "chen" || r.type === "n-ary" || r.attributes.length) {
       const ea = boxes.find((n) => n.id === a.entityId),
@@ -158,9 +162,12 @@ export function projectGraph(
           type: "chen",
           data: {
             ...data,
+            start: p.participation,
             end: p.participation,
-            mandatory: count.min > 0,
-            label: `Each ${owner}: ${participationLabel(count)} ${otherName}`,
+            endpoint: true,
+            endpointName: owner,
+            mandatory: totalParticipation(r.endpoints, i),
+            label: `Per ${otherName}: ${participationLabel(p.participation)} ${owner}`,
           },
           selected: selection?.id === r.id,
         });

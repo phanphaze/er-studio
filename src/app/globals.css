@@ -2069,3 +2069,94 @@ kbd {
 [data-contrast="high"] .edge-label {
   border-color: var(--edge-color);
 }
+/* Shared interaction accents, independent of each entity's chosen color. */
+:root {
+  --accent-ink: var(--accent);
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+[data-mode="light"] {
+  --accent-ink: color-mix(in srgb, var(--accent) 50%, #101a2e);
+}
+.brand-icon {
+  background: var(--accent);
+}
+.explorer-entity.active,
+.notation-switch button.active,
+[data-mode="light"] .explorer-entity.active,
+[data-mode="light"] .notation-switch button.active,
+.participation-summary,
+.cardinality-summary,
+[data-mode="light"] .participation-summary,
+[data-mode="light"] .cardinality-summary {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.panel-tabs button[data-state="active"],
+[data-mode="light"] .panel-tabs button[data-state="active"] {
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.selected-edge-label,
+[data-mode="light"] .selected-edge-label {
+  border-color: var(--accent);
+}
+.entity-node.is-selected {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 14px 35px #0004;
+}
+.focused-attribute-row,
+.attribute-editor.is-focused {
+  background: var(--accent-soft);
+  outline-color: var(--accent);
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+}
+.button-outline:hover,
+.button-ghost:hover {
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.panel-tabs button {
+  font-size: 12px;
+}
+.settings-panel {
+  max-height: 65vh;
+  overflow: auto;
+  padding-right: 8px;
+}
+/* Routed ports are geometry anchors, not extra buttons. Keep new-link handles on hover. */
+.react-flow .routed-port,
+.entity-node .routed-port,
+.chen-attribute .routed-port {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.entity-node > .react-flow__handle-top {
+  top: 0 !important;
+}
+.entity-node > .react-flow__handle-bottom {
+  top: auto !important;
+  bottom: 0 !important;
+}
+.entity-chen > .react-flow__handle:not(.routed-port) {
+  top: 50%;
+  opacity: 0;
+}
+.entity-chen:hover > .react-flow__handle:not(.routed-port),
+.entity-chen.is-selected > .react-flow__handle:not(.routed-port) {
+  opacity: 1;
+}
+.entity-chen > .react-flow__handle-left {
+  left: -10px;
+}
+.entity-chen > .react-flow__handle-right {
+  right: -10px;
+}
+.entity-node .react-flow__handle:hover::after {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}

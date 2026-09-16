@@ -67,6 +67,7 @@ const model = z.object({
             z.object({
               entityId: id,
               role: z.string().max(256),
+              entityParticipation: z.enum(["total", "partial"]).optional(),
               participation: z.object({
                 min: z.number().int().min(0).max(1000000),
                 max: z.union([

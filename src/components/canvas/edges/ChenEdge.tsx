@@ -6,10 +6,14 @@ import {
   type EdgeProps,
 } from "@xyflow/react";
 import { pathData, labelPoint } from "@/lib/layout/geometry";
+import { CardinalityMarks, compactBounds } from "./CardinalityMarks";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { useERStore } from "@/store/useERStore";
 import type { ERLinkData } from "./CrowsFootEdge";
 export function ChenEdge(props: EdgeProps) {
   const d = props.data as ERLinkData;
+  const display = useSettingsStore((s) => s.cardinalityDisplay);
+  const marked = d.endpoint && (display === "arrows" || display === "crow");
   let [path, x, y] = getSmoothStepPath(props);
   if (d.points?.length) {
     path = pathData(d.points);
@@ -30,8 +34,10 @@ export function ChenEdge(props: EdgeProps) {
   const stroke = props.selected ? "var(--accent)" : "var(--edge-color,#8993a8)";
   return (
     <>
+      {marked && <CardinalityMarks id={props.id} start={d.start} end={d.end} />}
       <BaseEdge
         {...props}
+        markerStart={marked ? `url(#${props.id}-s)` : undefined}
         interactionWidth={30}
         path={path}
         style={{ stroke, strokeWidth: d.mandatory ? 5 : 1.6 }}
@@ -49,12 +55,15 @@ export function ChenEdge(props: EdgeProps) {
         <EdgeLabelRenderer>
           <button
             className={`edge-label chen-edge-label nodrag nopan ${props.selected ? "selected-edge-label" : ""}`}
+            title={d.label}
             onClick={select}
             style={{
               transform: `translate(-50%, -50%) translate(${x}px,${y}px)`,
             }}
           >
-            {d.label}
+            {d.endpoint && display !== "words"
+              ? `${d.endpointName}: ${compactBounds(d.start, display)}`
+              : d.label}
           </button>
         </EdgeLabelRenderer>
       )}
