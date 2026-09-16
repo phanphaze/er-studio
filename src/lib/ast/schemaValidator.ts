@@ -26,6 +26,22 @@ export function validateGraph(g: ERGraph): ValidationIssue[] {
         id,
       );
   };
+  for (const set of g.entitySets ?? []) {
+    unique(set.id);
+    name(set.name, set.id);
+    const r = g.relationships.find((r) => r.id === set.relationshipId);
+    if (
+      !r ||
+      !set.entityIds.length ||
+      set.entityIds.some((id) => !g.entities.some((e) => e.id === id)) ||
+      r.endpoints.some((p) => !set.entityIds.includes(p.entityId))
+    )
+      error(
+        "ENTITY_SET",
+        "An entity set must include its relationship and all participants.",
+        set.id,
+      );
+  }
   const attrs = (as: Attribute[], owner: string) => {
     const names = new Set<string>();
     for (const a of as) {

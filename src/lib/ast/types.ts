@@ -99,6 +99,7 @@ export interface Specialization {
   position: Point;
 }
 export interface ERGraph {
+  entitySets?: { id: ID; name: string; relationshipId: ID; entityIds: ID[] }[];
   layouts?: Partial<Record<Notation, Record<ID, Point>>>;
   version: 1;
   name: string;

@@ -5,7 +5,9 @@ export async function organize(
   nodes: Node[],
   edges: Edge[],
 ): Promise<Record<string, Point>> {
-  const core = nodes.filter((n) => n.type !== "attribute");
+  const core = nodes.filter(
+    (n) => n.type !== "attribute" && n.type !== "entitySet",
+  );
   const clusters = new Map<
     string,
     { width: number; height: number; positions: Record<string, Point> }

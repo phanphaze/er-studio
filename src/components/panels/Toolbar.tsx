@@ -11,6 +11,7 @@ import {
   GitBranch,
   WandSparkles,
 } from "lucide-react";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { useERStore } from "@/store/useERStore";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +30,7 @@ export function Toolbar({
   onOrganize: () => Promise<void> | undefined;
   onAlign: (mode: string) => void;
 }) {
+  const appearance = useSettingsStore();
   const [organizing, setOrganizing] = useState(false);
   const graph = useERStore((s) => s.graph);
   const notation = useERStore((s) => s.notation);
@@ -48,6 +50,12 @@ export function Toolbar({
         setOpen((v) => !v);
         return;
       }
+      if (
+        (e.target as HTMLElement).closest(
+          '[role="dialog"], [role="menu"], .monaco-editor',
+        )
+      )
+        return;
       const tag = (e.target as HTMLElement).tagName;
       if (
         ["INPUT", "TEXTAREA", "SELECT"].includes(tag) ||
@@ -64,14 +72,8 @@ export function Toolbar({
         useERStore.getState().redo();
       }
       if (e.key === "Delete" || e.key === "Backspace") {
-        const s = useERStore.getState();
-        if (s.selection) {
-          e.preventDefault();
-          if (s.selection.kind === "entity") s.deleteEntity(s.selection.id);
-          else if (s.selection.kind === "relationship")
-            s.deleteRelationship(s.selection.id);
-          else s.deleteSpecialization(s.selection.id);
-        }
+        e.preventDefault();
+        useERStore.getState().deleteSelected();
       }
     };
     window.addEventListener("keydown", listener);
@@ -97,6 +99,23 @@ export function Toolbar({
             </button>
           ))}
         </div>
+        <select
+          aria-label="Cardinality label style"
+          title="Chen symbols / cardinality label style"
+          value={appearance.cardinalityDisplay}
+          onChange={(e) =>
+            appearance.setPreferences({
+              cardinalityDisplay: e.target
+                .value as typeof appearance.cardinalityDisplay,
+            })
+          }
+        >
+          <option value="words">Cardinality: words</option>
+          <option value="arrows">Cardinality: arrows</option>
+          <option value="crow">Cardinality: crow’s foot</option>
+          <option value="minmax">Cardinality: min/max</option>
+          <option value="dots">Cardinality: 0..many</option>
+        </select>
         <div className="toolbar-divider" />
         <Button
           variant="ghost"

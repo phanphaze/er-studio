@@ -642,6 +642,12 @@ function RelationshipEditor({ r }: { r: Relationship }) {
       ))}
       <Button
         variant="outline"
+        onClick={() => useERStore.getState().aggregateRelationship(r.id)}
+      >
+        Create entity set with participants
+      </Button>
+      <Button
+        variant="outline"
         disabled={r.endpoints.length !== 2}
         title={
           r.endpoints.length !== 2

@@ -29,7 +29,8 @@ export function projectGraph(
   const layouts = graph.layouts?.[notation] ?? {};
   const add = (n: Node, width: number, height: number, avoid = false) => {
     let pos = layouts[n.id] ?? n.position;
-    if (avoid) pos = freePosition({ id: n.id, ...pos, width, height }, boxes);
+    if (avoid && !layouts[n.id])
+      pos = freePosition({ id: n.id, ...pos, width, height }, boxes);
     const box = { id: n.id, ...pos, width, height };
     boxes.push(box);
     nodes.push({
@@ -159,7 +160,7 @@ export function projectGraph(
           id: r.id + "-" + i,
           source: p.entityId,
           target: r.id,
-          type: "chen",
+          type: notation === "chen" ? "chen" : "crow",
           data: {
             ...data,
             start: p.participation,
@@ -323,7 +324,7 @@ export function projectGraph(
       group.forEach((p, i) => (p.fraction = (i + 1) / (group.length + 1)));
     }
     const box = map.get(n.id)!;
-    if (notation === "chen") {
+    if (notation === "chen" && !layouts[n.id]) {
       const pos = freePosition(box, expanded);
       box.x = pos.x;
       box.y = pos.y;
@@ -336,6 +337,52 @@ export function projectGraph(
     n.data.layoutWidth = box.width;
     n.data.layoutHeight = box.height;
     n.data.ports = ports;
+  }
+  // Align facing ports on their common span rather than adding tiny doglegs.
+  for (const edge of edges) {
+    const a = map.get(edge.source),
+      b = map.get(edge.target);
+    if (!a || !b || a.id === b.id) continue;
+    const sp = assignments.get(a.id)!.find((p) => p.id === edge.sourceHandle)!,
+      tp = assignments.get(b.id)!.find((p) => p.id === edge.targetHandle)!;
+    const horizontal =
+      (sp.side === "left" && tp.side === "right") ||
+      (sp.side === "right" && tp.side === "left");
+    const vertical =
+      (sp.side === "top" && tp.side === "bottom") ||
+      (sp.side === "bottom" && tp.side === "top");
+    if (!horizontal && !vertical) continue;
+    const lo = Math.max(horizontal ? a.y : a.x, horizontal ? b.y : b.x) + 18;
+    const hi =
+      Math.min(
+        horizontal ? a.y + a.height : a.x + a.width,
+        horizontal ? b.y + b.height : b.x + b.width,
+      ) - 18;
+    if (lo > hi) continue;
+    const p = portPoint(a, sp),
+      q = portPoint(b, tp);
+    const shared = Math.max(
+      lo,
+      Math.min(hi, horizontal ? (p.y + q.y) / 2 : (p.x + q.x) / 2),
+    );
+    const available = (box: Box, port: Port) =>
+      !assignments
+        .get(box.id)!
+        .some(
+          (other) =>
+            other !== port &&
+            other.side === port.side &&
+            Math.abs(
+              (horizontal ? portPoint(box, other).y : portPoint(box, other).x) -
+                shared,
+            ) < 20,
+        );
+    if (available(a, sp) && available(b, tp)) {
+      sp.fraction =
+        (shared - (horizontal ? a.y : a.x)) / (horizontal ? a.height : a.width);
+      tp.fraction =
+        (shared - (horizontal ? b.y : b.x)) / (horizontal ? b.height : b.width);
+    }
   }
   const previous: ReturnType<typeof route>[] = [];
   for (const edge of edges) {
@@ -354,6 +401,30 @@ export function projectGraph(
     );
     previous.push(points);
     edge.data = { ...edge.data!, points };
+  }
+  for (const set of graph.entitySets ?? []) {
+    const ids = new Set([...set.entityIds, set.relationshipId]);
+    const members = nodes.filter(
+      (n) => ids.has(n.id) || ids.has(String(n.data.ownerId)),
+    );
+    if (!members.length) continue;
+    const x = Math.min(...members.map((n) => n.position.x)) - 35,
+      y = Math.min(...members.map((n) => n.position.y)) - 65;
+    const width =
+      Math.max(...members.map((n) => n.position.x + (n.width ?? 0))) - x + 35;
+    const height =
+      Math.max(...members.map((n) => n.position.y + (n.height ?? 0))) - y + 35;
+    nodes.unshift({
+      id: set.id,
+      type: "entitySet",
+      position: { x, y },
+      width,
+      height,
+      style: { width, height },
+      data: { label: set.name },
+      zIndex: -1,
+      dragHandle: ".set-drag",
+    });
   }
   return { nodes, edges };
 }

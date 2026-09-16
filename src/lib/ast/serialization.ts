@@ -28,6 +28,17 @@ const attribute: z.ZodType<Attribute> = z.lazy(() =>
 );
 const action = z.enum(["CASCADE", "RESTRICT", "NO ACTION", "SET NULL"]);
 const model = z.object({
+  entitySets: z
+    .array(
+      z.object({
+        id,
+        name: z.string().max(256),
+        relationshipId: id,
+        entityIds: z.array(id).max(1000),
+      }),
+    )
+    .max(1000)
+    .optional(),
   layouts: z
     .object({
       "crows-foot": z.record(id, point).optional(),

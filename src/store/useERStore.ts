@@ -12,9 +12,14 @@ import type {
   Selection,
   Specialization,
 } from "@/lib/ast/types";
+import { deleteItems } from "@/lib/ast/entitySets";
 import { attribute, seedGraph } from "./seed";
 import { attributeRows, attributeSiblings } from "@/lib/ast/attributes";
 export interface ERState {
+  insertionPosition?: () => Point;
+  selectedIds: string[];
+  deleteSelected: () => void;
+  aggregateRelationship: (id: string) => void;
   addAddress: (ownerId: string) => void;
   focusGenerated: (ownerId: string, key: string) => void;
   attributeFocus: {
@@ -92,6 +97,17 @@ const cloneAttributes = (attrs: Attribute[]): Attribute[] =>
       : undefined,
   }));
 const cleanSelection = (s: ERState) => {
+  const valid = new Set(
+    [
+      ...s.graph.entities,
+      ...s.graph.relationships,
+      ...s.graph.specializations,
+      ...(s.graph.entitySets ?? []),
+    ].map((n) => n.id),
+  );
+  for (const owner of [...s.graph.entities, ...s.graph.relationships])
+    attributeRows(owner.attributes).forEach((a) => valid.add(a.attribute.id));
+  s.selectedIds = s.selectedIds.filter((id) => valid.has(id));
   if (s.attributeFocus) {
     const owner = [...s.graph.entities, ...s.graph.relationships].find(
       (e) => e.id === s.attributeFocus!.ownerId,
@@ -148,6 +164,7 @@ export const useERStore = create<ERState>()(
     focusGenerated: (ownerId, key) =>
       set((s) => {
         s.selection = { kind: "entity", id: ownerId };
+        s.selectedIds = [ownerId];
         s.attributeFocus = {
           ownerId,
           attributeId: key,
@@ -168,6 +185,7 @@ export const useERStore = create<ERState>()(
             : "relationship",
           id: ownerId,
         };
+        s.selectedIds = [ownerId];
         s.attributeFocus = {
           ownerId,
           attributeId,
@@ -175,6 +193,30 @@ export const useERStore = create<ERState>()(
         };
       });
     },
+    selectedIds: [],
+    deleteSelected: () => {
+      const s = get();
+      const ids = s.selectedIds.length
+        ? s.selectedIds
+        : s.selection
+          ? [s.selection.id]
+          : [];
+      if (!ids.length) return;
+      s.commit((g) => deleteItems(g, ids));
+      set({ selectedIds: [], selection: null });
+    },
+    aggregateRelationship: (id) =>
+      get().commit((g) => {
+        const r = g.relationships.find((r) => r.id === id);
+        if (!r) return;
+        if (g.entitySets?.some((s) => s.relationshipId === id)) return;
+        (g.entitySets ??= []).push({
+          id: crypto.randomUUID(),
+          name: r.name + " entity set",
+          relationshipId: id,
+          entityIds: [...new Set(r.endpoints.map((p) => p.entityId))],
+        });
+      }),
     graph: seedGraph,
     past: [],
     future: [],
@@ -183,7 +225,17 @@ export const useERStore = create<ERState>()(
     transactionBase: null,
     commit: (change) => {
       const before = get().graph;
-      const next = produce(before, change);
+      const next = produce(before, (g) => {
+        change(g);
+        if (g.entitySets) {
+          const valid = g.entitySets.filter(
+            (s) =>
+              g.relationships.some((r) => r.id === s.relationshipId) &&
+              s.entityIds.every((id) => g.entities.some((e) => e.id === id)),
+          );
+          if (valid.length !== g.entitySets.length) g.entitySets = valid;
+        }
+      });
       if (next === before) return;
       set((s) => {
         if (!s.transactionBase) {
@@ -213,7 +265,12 @@ export const useERStore = create<ERState>()(
     },
     addEntity: (name = "untitled", position) => {
       const id = crypto.randomUUID();
+      position ??= get().insertionPosition?.();
       get().commit((g) => {
+        if (position) {
+          g.layouts ??= {};
+          (g.layouts[get().notation] ??= {})[id] = position;
+        }
         let n = name.trim() || "untitled";
         let i = 2;
         while (g.entities.some((e) => e.name === n)) n = `${name}_${i++}`;
@@ -388,7 +445,12 @@ export const useERStore = create<ERState>()(
       get().commit((g) => {
         g.specializations = g.specializations.filter((s) => s.id !== id);
       }),
-    setSelection: (selection) => set({ selection, attributeFocus: null }),
+    setSelection: (selection) =>
+      set({
+        selection,
+        selectedIds: selection ? [selection.id] : [],
+        attributeFocus: null,
+      }),
     setNotation: (notation) => set({ notation }),
     moveEntities: (positions) =>
       get().commit((g) => {
@@ -425,6 +487,8 @@ export const useERStore = create<ERState>()(
     replaceGraph: (graph) => {
       get().endTransaction();
       get().commit((g) => {
+        if (!graph.layouts) delete g.layouts;
+        if (!graph.entitySets) delete g.entitySets;
         Object.assign(g, graph);
       });
       get().setSelection(null);

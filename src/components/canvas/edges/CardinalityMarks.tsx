@@ -10,17 +10,20 @@ export function CardinalityMarks({
   id,
   start,
   end,
+  variant,
 }: {
   id: string;
   start: Participation;
   end: Participation;
+  variant?: "crow" | "arrows";
 }) {
-  const style = useSettingsStore((s) => s.cardinalityDisplay);
+  const preference = useSettingsStore((s) => s.cardinalityDisplay);
+  const style = variant ?? preference;
   const marker = (p: Participation, suffix: string) => (
     <marker
       id={`${id}-${suffix}`}
       viewBox="-2 -10 30 20"
-      refX="0"
+      refX="29"
       refY="0"
       markerWidth="30"
       markerHeight="20"
@@ -32,20 +35,20 @@ export function CardinalityMarks({
     >
       {style === "arrows" ? (
         <>
-          <path d="M 12,-7 L 1,0 L 12,7" />
-          {isMany(p) && <path d="M 21,-7 L 10,0 L 21,7" />}
+          <path d="M 18,-7 L 29,0 L 18,7" />
+          {isMany(p) && <path d="M 8,-7 L 19,0 L 8,7" />}
         </>
       ) : (
         <>
           {isMany(p) ? (
-            <path d="M 1,-7 L 15,0 L 1,7 M 1,0 H 15" />
+            <path d="M 29,-7 L 15,0 L 29,7 M 29,0 H 15" />
           ) : (
-            <path d="M 7,-7 V 7" />
+            <path d="M 23,-7 V 7" />
           )}
           {p.min === 0 ? (
-            <circle cx="22" cy="0" r="3" fill="var(--canvas-surface)" />
+            <circle cx="7" cy="0" r="3" fill="var(--canvas-surface)" />
           ) : (
-            <path d="M 20,-7 V 7" />
+            <path d="M 9,-7 V 7" />
           )}
         </>
       )}

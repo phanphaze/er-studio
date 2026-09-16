@@ -32,10 +32,7 @@ export const bounds = participationLabel;
 export function CrowsFootEdge(props: EdgeProps) {
   const d = props.data as ERLinkData;
   const display = useSettingsStore((s) => s.cardinalityDisplay);
-  const marked =
-    display === "arrows" ||
-    display === "crow" ||
-    (display === "words" && !d.uml);
+  const marked = !d.uml;
   let [path, x, y] = getSmoothStepPath({ ...props, borderRadius: 16 });
   if (!d.points && props.source === props.target) {
     path = `M ${props.sourceX} ${props.sourceY} C ${props.sourceX + 190} ${props.sourceY - 240}, ${props.targetX - 190} ${props.targetY - 240}, ${props.targetX} ${props.targetY}`;
@@ -50,19 +47,24 @@ export function CrowsFootEdge(props: EdgeProps) {
   }
   return (
     <>
-      <CardinalityMarks id={props.id} start={d.start} end={d.end} />
+      <CardinalityMarks
+        id={props.id}
+        start={d.start}
+        end={d.end}
+        variant="crow"
+      />
       <BaseEdge
         {...props}
         interactionWidth={30}
         path={path}
         markerStart={marked ? `url(#${props.id}-s)` : undefined}
-        markerEnd={marked ? `url(#${props.id}-e)` : undefined}
+        markerEnd={marked && !d.endpoint ? `url(#${props.id}-e)` : undefined}
         style={{
           stroke: props.selected
             ? "var(--accent)"
             : "var(--edge-color,#69758b)",
           strokeWidth: 1.6,
-          strokeDasharray: d.identifying ? undefined : "6 4",
+          strokeDasharray: d.uml || d.identifying ? undefined : "6 4",
         }}
       />
       <EdgeLabelRenderer>
@@ -82,9 +84,11 @@ export function CrowsFootEdge(props: EdgeProps) {
         >
           <strong>{d.label}</strong>
           <span className="edge-cardinality">
-            {display === "words"
-              ? d.cardinality
-              : `${compactBounds(d.start, display)} ↔ ${compactBounds(d.end, display)}`}
+            {d.endpoint
+              ? compactBounds(d.start, display)
+              : display === "words" && !d.uml
+                ? d.cardinality
+                : `${compactBounds(d.start, display)} ↔ ${compactBounds(d.end, display)}`}
           </span>
           {props.selected && (
             <small>
@@ -95,6 +99,12 @@ export function CrowsFootEdge(props: EdgeProps) {
             <span className="edge-actions nodrag nopan">
               <button
                 title="Invert cardinality"
+                disabled={
+                  useERStore
+                    .getState()
+                    .graph.relationships.find((r) => r.id === d.relationshipId)
+                    ?.endpoints.length !== 2
+                }
                 onClick={() =>
                   useERStore.getState().invertCardinality(d.relationshipId!)
                 }

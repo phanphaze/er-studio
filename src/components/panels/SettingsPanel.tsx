@@ -69,6 +69,10 @@ export function SettingsPanel() {
         limits remain labeled. Dot notation uses numeric ranges. Double lines
         mean total entity participation, independently of the maximum count.
       </p>
+      <p className="muted">
+        Crow’s Foot always retains its endpoint symbols; UML uses numeric
+        multiplicities. These choices control labels and Chen symbols.
+      </p>
       <h3>Diagram legend</h3>
       <p className="muted">
         One to one / one to many describes the maximum at both ends. Mandatory

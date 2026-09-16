@@ -33,6 +33,12 @@ export function facing(a: Box, b: Box): [Side, Side] {
   const dx = b.x + b.width / 2 - a.x - a.width / 2,
     dy = b.y + b.height / 2 - a.y - a.height / 2;
   if (a.id === b.id) return ["right", "top"];
+  const gapX = Math.abs(dx) - (a.width + b.width) / 2,
+    gapY = Math.abs(dy) - (a.height + b.height) / 2;
+  if (gapX > 40 && gapY > 40)
+    return Math.abs(dx) >= Math.abs(dy)
+      ? [dx > 0 ? "right" : "left", dy > 0 ? "top" : "bottom"]
+      : [dy > 0 ? "bottom" : "top", dx > 0 ? "left" : "right"];
   if (
     Math.abs(dx) / (a.width / 2 + b.width / 2) >
     Math.abs(dy) / (a.height / 2 + b.height / 2)
@@ -109,6 +115,38 @@ export function route(
   boxes: Box[],
   previous: Point[][] = [],
 ): Point[] {
+  const horizontal =
+    (sourceSide === "left" && targetSide === "right" && start.x > end.x) ||
+    (sourceSide === "right" && targetSide === "left" && start.x < end.x);
+  const vertical =
+    (sourceSide === "top" && targetSide === "bottom" && start.y > end.y) ||
+    (sourceSide === "bottom" && targetSide === "top" && start.y < end.y);
+  if (
+    ((horizontal && start.y === end.y) || (vertical && start.x === end.x)) &&
+    !boxes.some((b) => segmentHits(start, end, b))
+  )
+    return [start, end];
+  const outward = (a: Point, b: Point, side: Side) =>
+    side === "right"
+      ? b.x > a.x && b.y === a.y
+      : side === "left"
+        ? b.x < a.x && b.y === a.y
+        : side === "bottom"
+          ? b.y > a.y && b.x === a.x
+          : b.y < a.y && b.x === a.x;
+  for (const elbow of [
+    { x: end.x, y: start.y },
+    { x: start.x, y: end.y },
+  ]) {
+    if (
+      outward(start, elbow, sourceSide) &&
+      outward(end, elbow, targetSide) &&
+      !boxes.some(
+        (b) => segmentHits(start, elbow, b) || segmentHits(elbow, end, b),
+      )
+    )
+      return [start, elbow, end];
+  }
   const s = extend(start, sourceSide),
     t = extend(end, targetSide);
   const obstacles = boxes.map((b) => ({
@@ -158,7 +196,14 @@ export function route(
           ),
         0,
       ) +
-    ps.length * 8;
+    ps.length * 80 +
+    ps
+      .slice(1, -1)
+      .reduce(
+        (sum, p, i) =>
+          sum + (distance(ps[i], p) > 0 && distance(ps[i], p) < 24 ? 120 : 0),
+        0,
+      );
   let best = candidates.reduce((a, b) => (score(a) <= score(b) ? a : b));
   if (hits(best)) {
     // Bounded orthogonal grid search for obstacles requiring more than three bends.
