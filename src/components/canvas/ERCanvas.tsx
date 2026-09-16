@@ -251,7 +251,21 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
                   else ids.delete(c.id);
                 }
               });
-              useERStore.setState({ selectedIds: [...ids], selection: null });
+              const selectedIds = [...ids];
+              const id = selectedIds.length === 1 ? selectedIds[0] : undefined;
+              const kind =
+                id &&
+                (graph.entities.some((n) => n.id === id)
+                  ? ("entity" as const)
+                  : graph.relationships.some((n) => n.id === id)
+                    ? ("relationship" as const)
+                    : graph.specializations.some((n) => n.id === id)
+                      ? ("specialization" as const)
+                      : undefined);
+              useERStore.setState({
+                selectedIds,
+                selection: id && kind ? { id, kind } : null,
+              });
             }
           }}
           onEdgesChange={(changes) => {
@@ -288,17 +302,15 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
               return;
             }
             if (multi.length > 1 && multi.includes(n.id)) return;
-            useERStore
-              .getState()
-              .setSelection({
-                kind:
-                  n.type === "entity"
-                    ? "entity"
-                    : n.type === "isa"
-                      ? "specialization"
-                      : "relationship",
-                id: n.id,
-              });
+            useERStore.getState().setSelection({
+              kind:
+                n.type === "entity"
+                  ? "entity"
+                  : n.type === "isa"
+                    ? "specialization"
+                    : "relationship",
+              id: n.id,
+            });
           }}
           onEdgeClick={(_, e) => {
             const d = e.data as ERLinkData;
@@ -307,12 +319,10 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
                 .getState()
                 .setSelection({ kind: "relationship", id: d.relationshipId });
             else if (d?.specializationId)
-              useERStore
-                .getState()
-                .setSelection({
-                  kind: "specialization",
-                  id: d.specializationId,
-                });
+              useERStore.getState().setSelection({
+                kind: "specialization",
+                id: d.specializationId,
+              });
           }}
           onPaneClick={() => {
             setMulti([]);
