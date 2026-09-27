@@ -19,6 +19,8 @@ import {
   Plus,
 } from "lucide-react";
 import { useMemo, useState, useRef, useEffect } from "react";
+import type { Rect } from "@xyflow/react";
+import { PngExportDialog } from "./panels/PngExportDialog";
 import { ERCanvas, type CanvasActions } from "./canvas/ERCanvas";
 import { InspectorPanel } from "./panels/InspectorPanel";
 import { Toolbar } from "./panels/Toolbar";
@@ -70,6 +72,7 @@ export function ERWorkspace() {
   const fileRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<CanvasActions>(null);
   const [notice, setNotice] = useState("");
+  const [pngBounds, setPngBounds] = useState<Rect | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   useEffect(() => {
     if (!notice) return;
@@ -267,6 +270,25 @@ export function ERWorkspace() {
               >
                 <Save size={15} />
                 <span>Save project</span>
+              </Button>
+              <Button
+                variant="outline"
+                disabled={graph.entities.length === 0}
+                onClick={() => {
+                  try {
+                    if (!canvasRef.current) throw Error("Canvas is not ready.");
+                    setPngBounds(canvasRef.current.exportBounds());
+                  } catch (cause) {
+                    projects.setError(
+                      cause instanceof Error
+                        ? cause.message
+                        : "Canvas is not ready.",
+                    );
+                  }
+                }}
+              >
+                <FileDown size={15} />
+                <span>PNG</span>
               </Button>
               <Button
                 variant="outline"
@@ -546,6 +568,15 @@ export function ERWorkspace() {
           )}
         </div>
       )}
+      <PngExportDialog
+        bounds={pngBounds}
+        onClose={() => setPngBounds(null)}
+        onExport={async (scale) => {
+          if (!canvasRef.current) throw Error("Canvas is not ready.");
+          await canvasRef.current.exportPng(scale);
+          setNotice("High-resolution PNG exported.");
+        }}
+      />
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent>
           <DialogTitle>Settings</DialogTitle>

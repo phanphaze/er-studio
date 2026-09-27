@@ -14,6 +14,8 @@ import type { Point } from "@/lib/ast/types";
 import { projectGraph } from "@/lib/layout/projection";
 import { organize, aligned } from "@/lib/layout/organize";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { exportDiagramPng } from "@/lib/export/diagramPng";
+import type { Rect } from "@xyflow/react";
 import { exportDiagramPdf } from "@/lib/export/diagramPdf";
 import {
   ReactFlow,
@@ -44,6 +46,8 @@ const nodeTypes = {
 const edgeTypes = { crow: CrowsFootEdge, chen: ChenEdge };
 export interface CanvasActions {
   exportPdf: () => Promise<void>;
+  exportPng: (scale: number) => Promise<void>;
+  exportBounds: () => Rect;
   organize: () => Promise<void>;
   align: (mode: string) => void;
 }
@@ -151,6 +155,19 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
     useERStore.getState().endTransaction();
   };
 
+  const exportBounds = () => {
+    const nodes = flow
+      .getNodes()
+      .map((node) => ({
+        ...node,
+        width:
+          flow.getInternalNode(node.id)?.measured.width ?? node.width ?? 290,
+        height:
+          flow.getInternalNode(node.id)?.measured.height ?? node.height ?? 120,
+      }));
+    if (!nodes.length) throw Error("Add an entity before exporting.");
+    return getNodesBounds(nodes);
+  };
   useImperativeHandle(actionsRef, () => ({
     organize: async () => {
       const before = useERStore.getState().graph;
@@ -170,6 +187,19 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
             n.type === "entity" && (multi.length < 2 || multi.includes(n.id)),
         );
       savePositions(aligned(nodes, mode));
+    },
+    exportBounds,
+    exportPng: async (scale) => {
+      const viewport = root.current?.querySelector<HTMLElement>(
+        ".react-flow__viewport",
+      );
+      if (!viewport) throw Error("Canvas is not ready. Please retry.");
+      await exportDiagramPng(
+        viewport,
+        exportBounds(),
+        useERStore.getState().graph.name,
+        scale,
+      );
     },
     exportPdf: async () => {
       const nodes = flow.getNodes().map((node) => {
