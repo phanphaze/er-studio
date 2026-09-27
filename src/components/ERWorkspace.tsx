@@ -145,6 +145,23 @@ export function ERWorkspace() {
       setNewOpen(true);
     });
   const importFile = () => guard(() => fileRef.current?.click());
+  if (projects.restoring)
+    return (
+      <main className="project-restore-screen">
+        <Database size={32} aria-hidden="true" />
+        <h1>
+          {projects.restoreError
+            ? "Could not reopen your project"
+            : "Opening your workspace…"}
+        </h1>
+        <p role={projects.restoreError ? "alert" : "status"}>
+          {projects.restoreError || "Restoring your last opened project."}
+        </p>
+        {projects.restoreError && (
+          <Button onClick={projects.retryRestore}>Try again</Button>
+        )}
+      </main>
+    );
   return (
     <main className="app-shell">
       <header className="app-header">

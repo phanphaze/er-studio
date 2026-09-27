@@ -2,6 +2,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useERStore } from "@/store/useERStore";
 import { projectsAPI } from "./api";
+import {
+  lastProjectId,
+  rememberProject,
+  restoreProject,
+} from "./restoreProject";
 import type { ProjectSummary } from "./types";
 import type { ERGraph } from "../ast/types";
 export function useProjects() {
@@ -10,9 +15,12 @@ export function useProjects() {
   const [current, setCurrent] = useState<ProjectSummary | null>(null);
   const [savedGraph, setSavedGraph] = useState<ERGraph | null>(graph);
   const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
+  const [restoring, setRestoring] = useState(true);
+  const [restoreError, setRestoreError] = useState("");
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
   const [error, setError] = useState("");
-  const locked = useRef(false);
+  const locked = useRef(true);
   const dirty = graph !== savedGraph;
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -26,9 +34,6 @@ export function useProjects() {
     }
   }, []);
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
-  useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
       if (dirty) {
         e.preventDefault();
@@ -38,18 +43,47 @@ export function useProjects() {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
-  const load = (g: ERGraph, project: ProjectSummary | null) => {
+  const load = useCallback((g: ERGraph, project: ProjectSummary | null) => {
     useERStore.setState({
       graph: g,
       past: [],
       future: [],
       selection: null,
+      selectedIds: [],
       attributeFocus: null,
       transactionBase: null,
     });
     setCurrent(project);
     setSavedGraph(g);
-  };
+    if (project) rememberProject(project.id);
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    locked.current = true;
+    setBusy(true);
+    setRestoring(true);
+    setRestoreError("");
+    void restoreProject(projectsAPI, lastProjectId())
+      .then((result) => {
+        if (cancelled) return;
+        setProjects(result.projects);
+        if (result.current) load(result.current.graph, result.current);
+        setRestoring(false);
+        locked.current = false;
+        setBusy(false);
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled)
+          setRestoreError(
+            cause instanceof Error
+              ? cause.message
+              : "Could not reopen your project.",
+          );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [load, restoreAttempt]);
   const save = async (asCopy = false): Promise<boolean> => {
     if (locked.current) return false;
     locked.current = true;
@@ -59,6 +93,7 @@ export function useProjects() {
     try {
       const record = await projectsAPI.save(snapshot, asCopy ? null : current);
       setCurrent(record);
+      rememberProject(record.id);
       setSavedGraph(snapshot);
       setProjects((list) => [
         record,
@@ -117,6 +152,9 @@ export function useProjects() {
   };
   return {
     projects,
+    restoring,
+    restoreError,
+    retryRestore: () => setRestoreAttempt((attempt) => attempt + 1),
     current,
     loading,
     busy,

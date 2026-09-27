@@ -10,6 +10,7 @@ import type { Attribute } from "@/lib/ast/types";
 export function AttributeNode({
   data,
   id,
+  selected,
 }: NodeProps<
   Node<
     {
@@ -34,12 +35,14 @@ export function AttributeNode({
         aria-label={`Edit ${a.name}`}
         onClick={(e) => {
           e.stopPropagation();
-          useERStore.getState().focusAttribute(data.ownerId, a.id);
+          useERStore.getState().focusAttribute(data.ownerId, a.id, e.shiftKey);
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            useERStore.getState().focusAttribute(data.ownerId, a.id);
+            useERStore
+              .getState()
+              .focusAttribute(data.ownerId, a.id, e.shiftKey);
           }
         }}
         style={
@@ -47,7 +50,7 @@ export function AttributeNode({
             ? ({ "--attribute-color": data.ownerColor } as CSSProperties)
             : undefined
         }
-        className={`chen-attribute ${data.ownerColor ? "entity-colored-attribute" : ""} ${a.isMultivalued ? "multivalued" : ""} ${a.isDerived ? "derived" : ""}`}
+        className={`chen-attribute ${selected ? "is-selected" : ""} ${data.ownerColor ? "entity-colored-attribute" : ""} ${a.isMultivalued ? "multivalued" : ""} ${a.isDerived ? "derived" : ""}`}
       >
         <ConnectionPorts nodeId={id} ports={data.ports} />
         <Handle id="in" type="target" position={Position.Bottom} />

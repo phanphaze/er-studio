@@ -1,4 +1,5 @@
 "use client";
+import { EntityColorPicker } from "./EntityColorPicker";
 import {
   cardinalityFor,
   cardinalityLabel,
@@ -759,20 +760,12 @@ export function InspectorPanel() {
                   ))}
                 </select>
               </label>
-              <div className="color-picker">
-                {["#a78bfa", "#60a5fa", "#34d399", "#fbbf24", "#f472b6"].map(
-                  (color) => (
-                    <button
-                      key={color}
-                      aria-label={`Set color ${color}`}
-                      style={{ background: color }}
-                      onClick={() =>
-                        useERStore.getState().updateEntity(e.id, { color })
-                      }
-                    />
-                  ),
-                )}
-              </div>
+              <EntityColorPicker
+                value={e.color}
+                onChange={(color) =>
+                  useERStore.getState().updateEntity(e.id, { color })
+                }
+              />
               <EntityMultiplicityPanel key={e.id} entityId={e.id} />
               <div className="section-heading">
                 <strong>Attributes</strong>

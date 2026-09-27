@@ -80,3 +80,49 @@ it("routes clear aligned nodes straight and clear diagonal nodes with one bend",
     route({ x: 100, y: 50 }, { x: 350, y: 250 }, "right", "top", [a, b]),
   ).toHaveLength(3);
 });
+
+it("adds entities and attributes to a shared selection and deletes attributes without deleting their owner", () => {
+  reset();
+  const s = useERStore.getState();
+  const entity = s.graph.entities[0];
+  const other = s.graph.entities[1];
+  const first = entity.attributes[0],
+    second = entity.attributes[1];
+  s.setSelection({ kind: "entity", id: other.id });
+  s.focusAttribute(entity.id, first.id, true);
+  s.focusAttribute(entity.id, second.id, true);
+  expect(useERStore.getState().selectedIds).toEqual([
+    other.id,
+    first.id,
+    second.id,
+  ]);
+  s.setSelection({ kind: "entity", id: entity.id }, true);
+  expect(useERStore.getState().selectedIds).toContain(first.id);
+  s.focusAttribute(entity.id, first.id);
+  s.focusAttribute(entity.id, second.id, true);
+  expect(useERStore.getState().selectedIds).toEqual([first.id, second.id]);
+  s.deleteSelected();
+  const remaining = useERStore
+    .getState()
+    .graph.entities.find((e) => e.id === entity.id);
+  expect(remaining).toBeDefined();
+  expect(
+    remaining?.attributes.some((a) => [first.id, second.id].includes(a.id)),
+  ).toBe(false);
+  s.undo();
+  expect(
+    useERStore.getState().graph.entities.find((e) => e.id === entity.id)
+      ?.attributes,
+  ).toEqual(entity.attributes);
+});
+
+it("makes Chen attributes selectable and carries their owner colors into the overview node data", () => {
+  const graph = structuredClone(seedGraph);
+  graph.entities[0].color = "#123456";
+  const projection = projectGraph(graph, "chen", null);
+  for (const attribute of graph.entities[0].attributes) {
+    const node = projection.nodes.find((n) => n.id === attribute.id);
+    expect(node?.selectable).toBe(true);
+    expect(node?.data.ownerColor).toBe("#123456");
+  }
+});

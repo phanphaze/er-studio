@@ -109,7 +109,7 @@ export const EntityNode = memo(function EntityNode({
       });
     previousTops.current = next;
   }, [entity.attributes]);
-  const focus = useERStore((s) => s.attributeFocus);
+  const selectedIds = useERStore((s) => s.selectedIds);
   const notation = useERStore((s) => s.notation);
   const update = useERStore((s) => s.updateAttribute);
   const begin = useERStore((s) => s.beginTransaction);
@@ -194,7 +194,7 @@ export const EntityNode = memo(function EntityNode({
           <div
             key={a.id}
             data-row-id={a.id}
-            className={`attribute-row nodrag ${a.isDerived ? "derived" : ""} ${focus?.attributeId === a.id ? "focused-attribute-row" : ""}`}
+            className={`attribute-row nodrag ${a.isDerived ? "derived" : ""} ${selectedIds.includes(a.id) ? "focused-attribute-row" : ""}`}
             style={{
               paddingLeft: Math.max(
                 4,
@@ -214,11 +214,14 @@ export const EntityNode = memo(function EntityNode({
             }}
             onClick={(e) => {
               e.stopPropagation();
-              useERStore.getState().focusAttribute(id, a.id);
+              useERStore.getState().focusAttribute(id, a.id, e.shiftKey);
             }}
             onFocus={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget))
-                useERStore.getState().focusAttribute(id, a.id);
+              if (
+                !e.currentTarget.contains(e.relatedTarget) &&
+                e.target.matches(":focus-visible")
+              )
+                useERStore.getState().focusAttribute(id, a.id, true);
             }}
           >
             <button

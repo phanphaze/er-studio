@@ -241,7 +241,7 @@ export function projectGraph(
               ownerColor: graph.entities.find((e) => e.id === ownerId)?.color,
             },
             draggable: true,
-            selectable: false,
+            selectable: true,
           },
           width,
           height,

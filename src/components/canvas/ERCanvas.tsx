@@ -203,7 +203,7 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
     () =>
       projection.nodes.map((n) => ({
         ...n,
-        selected: n.id === selection?.id || multi.includes(n.id),
+        selected: multi.includes(n.id),
       })),
     [projection, selection, multi],
   );
@@ -295,22 +295,29 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
           }}
           onNodeClick={(event, n) => {
             if (n.type === "attribute") return;
-            if (event.shiftKey) return;
+
             if (n.type === "entitySet") {
-              setMulti([n.id]);
+              setMulti(
+                event.shiftKey
+                  ? [...new Set([...useERStore.getState().selectedIds, n.id])]
+                  : [n.id],
+              );
               useERStore.setState({ selection: null });
               return;
             }
             if (multi.length > 1 && multi.includes(n.id)) return;
-            useERStore.getState().setSelection({
-              kind:
-                n.type === "entity"
-                  ? "entity"
-                  : n.type === "isa"
-                    ? "specialization"
-                    : "relationship",
-              id: n.id,
-            });
+            useERStore.getState().setSelection(
+              {
+                kind:
+                  n.type === "entity"
+                    ? "entity"
+                    : n.type === "isa"
+                      ? "specialization"
+                      : "relationship",
+                id: n.id,
+              },
+              event.shiftKey,
+            );
           }}
           onEdgeClick={(_, e) => {
             const d = e.data as ERLinkData;
@@ -376,7 +383,8 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
           <MiniMap
             nodeColor={(n) =>
               (n.data.entity as { color: string } | undefined)?.color ??
-              "#a78bfa"
+              (n.data.ownerColor as string | undefined) ??
+              (n.type === "relationship" ? "#ac94ca" : "#8b7aa7")
             }
             maskColor={
               mode === "light" ? "rgba(225,232,240,.6)" : "rgba(10,12,17,.6)"

@@ -38,7 +38,11 @@ export interface ERState {
     request: number;
     generated?: boolean;
   } | null;
-  focusAttribute: (ownerId: string, attributeId: string) => void;
+  focusAttribute: (
+    ownerId: string,
+    attributeId: string,
+    additive?: boolean,
+  ) => void;
   graph: ERGraph;
   past: ERGraph[];
   future: ERGraph[];
@@ -81,7 +85,7 @@ export interface ERState {
     patch: Partial<Omit<Specialization, "id">>,
   ) => void;
   deleteSpecialization: (id: string) => void;
-  setSelection: (selection: Selection) => void;
+  setSelection: (selection: Selection, additive?: boolean) => void;
   setNotation: (notation: Notation) => void;
   moveEntities: (positions: { id: string; position: Point }[]) => void;
   undo: () => void;
@@ -206,7 +210,7 @@ export const useERStore = create<ERState>()(
         };
       }),
     attributeFocus: null,
-    focusAttribute: (ownerId, attributeId) => {
+    focusAttribute: (ownerId, attributeId, additive = false) => {
       const owner =
         get().graph.entities.find((e) => e.id === ownerId) ??
         get().graph.relationships.find((r) => r.id === ownerId);
@@ -218,7 +222,9 @@ export const useERStore = create<ERState>()(
             : "relationship",
           id: ownerId,
         };
-        s.selectedIds = [ownerId];
+        s.selectedIds = additive
+          ? [...new Set([...s.selectedIds, attributeId])]
+          : [attributeId];
         s.attributeFocus = {
           ownerId,
           attributeId,
@@ -236,7 +242,7 @@ export const useERStore = create<ERState>()(
           : [];
       if (!ids.length) return;
       s.commit((g) => deleteItems(g, ids));
-      set({ selectedIds: [], selection: null });
+      set({ selectedIds: [], selection: null, attributeFocus: null });
     },
     aggregateRelationship: (id) =>
       get().commit((g) => {
@@ -489,10 +495,14 @@ export const useERStore = create<ERState>()(
       get().commit((g) => {
         g.specializations = g.specializations.filter((s) => s.id !== id);
       }),
-    setSelection: (selection) =>
+    setSelection: (selection, additive = false) =>
       set({
         selection,
-        selectedIds: selection ? [selection.id] : [],
+        selectedIds: selection
+          ? additive
+            ? [...new Set([...get().selectedIds, selection.id])]
+            : [selection.id]
+          : [],
         attributeFocus: null,
       }),
     setNotation: (notation) => set({ notation }),
