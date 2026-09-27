@@ -13,6 +13,7 @@ import type {
   Specialization,
 } from "@/lib/ast/types";
 import { cardinalityFor } from "@/lib/ast/participation";
+import { assignWeakOwner } from "@/lib/ast/weakOwnership";
 import { deleteItems } from "@/lib/ast/entitySets";
 import { attribute, seedGraph } from "./seed";
 import {
@@ -24,6 +25,7 @@ export interface ERState {
   insertionPosition?: () => Point;
   selectedIds: string[];
   deleteSelected: () => void;
+  setWeakOwner: (weakId: string, ownerId: string) => void;
   aggregateRelationship: (id: string) => void;
   setEntityMultiplicity: (
     relationshipId: string,
@@ -232,6 +234,8 @@ export const useERStore = create<ERState>()(
         };
       });
     },
+    setWeakOwner: (weakId, ownerId) =>
+      get().commit((g) => assignWeakOwner(g, weakId, ownerId)),
     selectedIds: [],
     deleteSelected: () => {
       const s = get();

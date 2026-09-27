@@ -1,3 +1,4 @@
+import { attributeRows } from "./attributes";
 import { isMany } from "./participation";
 import {
   DATA_TYPES,
@@ -120,7 +121,11 @@ export function validateGraph(g: ERGraph): ValidationIssue[] {
     names.add(e.name);
     attrs(e.attributes, e.id);
     if (e.type === "weak") {
-      if (!e.attributes.some((a) => a.isPartialKey))
+      if (
+        !attributeRows(e.attributes).some(
+          ({ attribute }) => attribute.isPartialKey,
+        )
+      )
         error("PARTIAL_KEY", `${e.name} needs a partial key.`, e.id);
       if (
         g.relationships.filter(

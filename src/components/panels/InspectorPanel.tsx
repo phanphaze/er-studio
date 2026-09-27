@@ -1,4 +1,5 @@
 "use client";
+import { WeakOwnershipPanel } from "./WeakOwnershipPanel";
 import { EntityColorPicker } from "./EntityColorPicker";
 import {
   cardinalityFor,
@@ -766,6 +767,7 @@ export function InspectorPanel() {
                   useERStore.getState().updateEntity(e.id, { color })
                 }
               />
+              {e.type === "weak" && <WeakOwnershipPanel entityId={e.id} />}
               <EntityMultiplicityPanel key={e.id} entityId={e.id} />
               <div className="section-heading">
                 <strong>Attributes</strong>

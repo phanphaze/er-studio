@@ -2504,3 +2504,38 @@ input[type="radio"] {
     0 0 0 3px var(--accent),
     0 0 0 6px var(--accent-soft);
 }
+
+.weak-ownership-panel {
+  margin: 20px 0;
+  padding: 14px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+}
+.weak-ownership-panel h3,
+.weak-ownership-panel h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 12px 0;
+}
+.weak-ownership-panel p {
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.8;
+  margin: 10px 0;
+}
+.weak-ownership-panel code {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.weak-partial-keys {
+  display: grid;
+  gap: 10px;
+}
+.weak-partial-keys label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
