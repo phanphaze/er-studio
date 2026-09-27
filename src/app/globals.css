@@ -2384,3 +2384,39 @@ input[type="radio"] {
     transition: none;
   }
 }
+.entity-multiplicity {
+  margin: 20px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.entity-multiplicity p {
+  line-height: 1.5;
+}
+.multiplicity-link {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.multiplicity-link .digits-check {
+  line-height: 1.5;
+  align-items: flex-start;
+  gap: 8px;
+}
+.multiplicity-link input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin-top: 3px;
+}
+.multiplicity-link small {
+  display: block;
+  margin: 6px 0 6px 24px;
+  color: var(--muted);
+}
+.multiplicity-details {
+  background: none;
+  border: 0;
+  color: var(--accent-ink);
+  padding: 3px 0;
+  text-decoration: underline;
+}

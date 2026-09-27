@@ -12,6 +12,7 @@ import type {
   Selection,
   Specialization,
 } from "@/lib/ast/types";
+import { cardinalityFor } from "@/lib/ast/participation";
 import { deleteItems } from "@/lib/ast/entitySets";
 import { attribute, seedGraph } from "./seed";
 import {
@@ -24,6 +25,11 @@ export interface ERState {
   selectedIds: string[];
   deleteSelected: () => void;
   aggregateRelationship: (id: string) => void;
+  setEntityMultiplicity: (
+    relationshipId: string,
+    endpointIndex: number,
+    multiple: boolean,
+  ) => void;
   addAddress: (ownerId: string) => void;
   focusGenerated: (ownerId: string, key: string) => void;
   attributeFocus: {
@@ -141,6 +147,24 @@ const cleanSelection = (s: ERState) => {
  * selection, viewport and renderer preference never destroy redo history. */
 export const useERStore = create<ERState>()(
   immer((set, get) => ({
+    setEntityMultiplicity: (relationshipId, endpointIndex, multiple) =>
+      get().commit((g) => {
+        const r = g.relationships.find((r) => r.id === relationshipId),
+          p = r?.endpoints[endpointIndex];
+        if (!r || !p) return;
+        if (
+          multiple &&
+          r.type === "identifying" &&
+          r.ownerEntityId === p.entityId
+        )
+          return;
+        p.participation.max = multiple ? "*" : 1;
+        if (!multiple) p.participation.min = Math.min(1, p.participation.min);
+        if (r.endpoints.length === 2)
+          r.endpoints[1 - endpointIndex].entityParticipation =
+            p.participation.min > 0 ? "total" : "partial";
+        r.cardinality = cardinalityFor(r.endpoints);
+      }),
     addAddress: (ownerId) => {
       const id = crypto.randomUUID();
       get().commit((g) => {

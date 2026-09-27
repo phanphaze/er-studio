@@ -34,7 +34,7 @@ export const bounds = participationLabel;
 export function CrowsFootEdge(props: EdgeProps) {
   const d = props.data as ERLinkData;
   const display = useSettingsStore((s) => s.cardinalityDisplay);
-  const marked = !d.uml;
+  const marked = display === "arrows" || display === "crow";
   let [path, x, y] = getSmoothStepPath({ ...props, borderRadius: 16 });
   if (!d.points && props.source === props.target) {
     path = `M ${props.sourceX} ${props.sourceY} C ${props.sourceX + 190} ${props.sourceY - 240}, ${props.targetX - 190} ${props.targetY - 240}, ${props.targetX} ${props.targetY}`;
@@ -66,12 +66,7 @@ export function CrowsFootEdge(props: EdgeProps) {
             pointerEvents="none"
           />
         )}
-      <CardinalityMarks
-        id={props.id}
-        start={d.start}
-        end={d.end}
-        variant="crow"
-      />
+      {marked && <CardinalityMarks id={props.id} start={d.start} end={d.end} />}
       <BaseEdge
         {...props}
         interactionWidth={30}

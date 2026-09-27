@@ -34,6 +34,7 @@ import {
   relationshipCardinality,
   totalParticipation,
 } from "@/lib/ast/participation";
+import { EntityMultiplicityPanel } from "./EntityMultiplicityPanel";
 import { SqlPreviewPanel } from "./SqlPreviewPanel";
 function TextField({
   label,
@@ -440,15 +441,6 @@ function RelationshipEditor({ r }: { r: Relationship }) {
           >
             <option value="">Select owner</option>
 
-            <div className="cardinality-summary">
-              {relationshipCardinality(r.endpoints)}
-            </div>
-            {r.endpoints.length > 2 && (
-              <p className="muted">
-                Each limit applies to one fixed combination of all other
-                participants, not a pairwise relationship.
-              </p>
-            )}
             {r.endpoints.map((p, i) => (
               <option key={i} value={p.entityId}>
                 {
@@ -550,7 +542,17 @@ function RelationshipEditor({ r }: { r: Relationship }) {
             value={p.participation}
             onChange={(participation) => {
               const endpoints = r.endpoints.map((endpoint, j) =>
-                j === i ? { ...endpoint, participation } : endpoint,
+                j === i
+                  ? { ...endpoint, participation }
+                  : r.endpoints.length === 2
+                    ? {
+                        ...endpoint,
+                        entityParticipation:
+                          participation.min > 0
+                            ? ("total" as const)
+                            : ("partial" as const),
+                      }
+                    : endpoint,
               );
               update({ endpoints, cardinality: cardinalityFor(endpoints) });
             }}
@@ -771,6 +773,7 @@ export function InspectorPanel() {
                   ),
                 )}
               </div>
+              <EntityMultiplicityPanel key={e.id} entityId={e.id} />
               <div className="section-heading">
                 <strong>Attributes</strong>
                 <Button

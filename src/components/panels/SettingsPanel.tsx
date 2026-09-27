@@ -70,8 +70,9 @@ export function SettingsPanel() {
         mean total entity participation, independently of the maximum count.
       </p>
       <p className="muted">
-        Crow’s Foot always retains its endpoint symbols; UML uses numeric
-        multiplicities. These choices control labels and Chen symbols.
+        Applies to entity–relationship connector lines in every view. Arrows and
+        crow’s feet change the endpoint symbols; words and numeric ranges use
+        plain lines.
       </p>
       <h3>Diagram legend</h3>
       <p className="muted">

@@ -10,23 +10,21 @@ export function CardinalityMarks({
   id,
   start,
   end,
-  variant,
 }: {
   id: string;
   start: Participation;
   end: Participation;
-  variant?: "crow" | "arrows";
 }) {
-  const preference = useSettingsStore((s) => s.cardinalityDisplay);
-  const style = variant ?? preference;
+  const style = useSettingsStore((s) => s.cardinalityDisplay);
+  if (style !== "arrows" && style !== "crow") return null;
   const marker = (p: Participation, suffix: string) => (
     <marker
       id={`${id}-${suffix}`}
-      viewBox="-2 -10 30 20"
+      viewBox="0 -11 32 22"
       refX="29"
       refY="0"
-      markerWidth="30"
-      markerHeight="20"
+      markerWidth="32"
+      markerHeight="22"
       orient="auto-start-reverse"
       markerUnits="userSpaceOnUse"
       stroke="var(--edge-color)"

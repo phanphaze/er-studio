@@ -100,8 +100,8 @@ export function Toolbar({
           ))}
         </div>
         <select
-          aria-label="Cardinality label style"
-          title="Chen symbols / cardinality label style"
+          aria-label="Connector cardinality style"
+          title="Connector symbols and cardinality labels"
           value={appearance.cardinalityDisplay}
           onChange={(e) =>
             appearance.setPreferences({
