@@ -235,7 +235,11 @@ export function projectGraph(
               x: parent.x + (i % 3) * (width + 45) - width,
               y: parent.y - 135 - Math.floor(i / 3) * 120,
             },
-            data: { attribute: a, ownerId },
+            data: {
+              attribute: a,
+              ownerId,
+              ownerColor: graph.entities.find((e) => e.id === ownerId)?.color,
+            },
             draggable: true,
             selectable: false,
           },

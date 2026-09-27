@@ -1,4 +1,5 @@
 "use client";
+import type { CSSProperties } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { ConnectionPorts } from "./ConnectionPorts";
 import type { Port } from "@/lib/layout/geometry";
@@ -10,7 +11,15 @@ export function AttributeNode({
   data,
   id,
 }: NodeProps<
-  Node<{ attribute: Attribute; ownerId: string; ports?: Port[] }, "attribute">
+  Node<
+    {
+      attribute: Attribute;
+      ownerId: string;
+      ownerColor?: string;
+      ports?: Port[];
+    },
+    "attribute"
+  >
 >) {
   const a = data.attribute;
   return (
@@ -33,7 +42,12 @@ export function AttributeNode({
             useERStore.getState().focusAttribute(data.ownerId, a.id);
           }
         }}
-        className={`chen-attribute ${a.isMultivalued ? "multivalued" : ""} ${a.isDerived ? "derived" : ""}`}
+        style={
+          data.ownerColor
+            ? ({ "--attribute-color": data.ownerColor } as CSSProperties)
+            : undefined
+        }
+        className={`chen-attribute ${data.ownerColor ? "entity-colored-attribute" : ""} ${a.isMultivalued ? "multivalued" : ""} ${a.isDerived ? "derived" : ""}`}
       >
         <ConnectionPorts nodeId={id} ports={data.ports} />
         <Handle id="in" type="target" position={Position.Bottom} />

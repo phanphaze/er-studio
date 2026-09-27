@@ -2420,3 +2420,25 @@ input[type="radio"] {
   padding: 3px 0;
   text-decoration: underline;
 }
+
+.chen-attribute.entity-colored-attribute {
+  border-color: var(--attribute-color);
+  color: var(--attribute-color);
+  background: color-mix(
+    in srgb,
+    var(--attribute-color) 12%,
+    var(--canvas-surface)
+  );
+}
+.chen-attribute.entity-colored-attribute.multivalued {
+  outline-color: var(--attribute-color);
+}
+[data-mode="light"] .chen-attribute.entity-colored-attribute {
+  border-color: var(--attribute-color);
+  color: color-mix(in srgb, var(--attribute-color) 60%, #172235);
+  background: color-mix(
+    in srgb,
+    var(--attribute-color) 12%,
+    var(--canvas-surface)
+  );
+}

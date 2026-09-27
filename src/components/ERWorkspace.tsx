@@ -117,6 +117,22 @@ export function ERWorkspace() {
   const save = async () => {
     if (await projects.save()) setNotice("Project saved.");
   };
+  useEffect(() => {
+    const onSaveShortcut = (event: KeyboardEvent) => {
+      if (
+        !(event.ctrlKey || event.metaKey) ||
+        event.altKey ||
+        event.shiftKey ||
+        event.key.toLowerCase() !== "s"
+      )
+        return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!event.repeat && view === "editor" && !projects.busy) void save();
+    };
+    window.addEventListener("keydown", onSaveShortcut, true);
+    return () => window.removeEventListener("keydown", onSaveShortcut, true);
+  }, [view, projects.busy, projects.save]);
   const open = (id: string) =>
     guard(() => {
       void projects.open(id).then((ok) => {
@@ -229,6 +245,7 @@ export function ERWorkspace() {
               <Button
                 variant="outline"
                 disabled={projects.busy}
+                title="Save project (Ctrl+S / ⌘S)"
                 onClick={() => void save()}
               >
                 <Save size={15} />
