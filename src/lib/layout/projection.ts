@@ -1,3 +1,4 @@
+import { placeLabel } from "./labels";
 import type { Node, Edge } from "@xyflow/react";
 import type { Attribute, ERGraph, Notation, Selection } from "../ast/types";
 import { attributeRows } from "../ast/attributes";
@@ -9,6 +10,7 @@ import {
 } from "../ast/participation";
 import {
   freePosition,
+  labelPoint,
   facing,
   portPoint,
   route,
@@ -124,7 +126,7 @@ export function projectGraph(
       relationshipId: r.id,
       cardinality: relationshipCardinality(r.endpoints),
     };
-    if (notation === "chen" || r.type === "n-ary" || r.attributes.length) {
+    {
       const ea = boxes.find((n) => n.id === a.entityId),
         eb = boxes.find((n) => n.id === b.entityId);
       add(
@@ -138,10 +140,8 @@ export function projectGraph(
           data: { relationship: r },
           selected: selection?.id === r.id,
         },
-        notation === "chen" ? 180 : 300,
-        notation === "chen"
-          ? 110
-          : 70 + attributeRows(r.attributes).length * 34,
+        Math.min(380, Math.max(240, r.name.length * 7 + 110)),
+        Math.max(150, Math.ceil(r.name.length / 22) * 26 + 80),
         true,
       );
       r.endpoints.forEach((p, i) => {
@@ -173,15 +173,7 @@ export function projectGraph(
           selected: selection?.id === r.id,
         });
       });
-    } else
-      edges.push({
-        id: r.id,
-        source: a.entityId,
-        target: b.entityId,
-        type: "crow",
-        data,
-        selected: selection?.id === r.id,
-      });
+    }
   }
   for (const s of graph.specializations) {
     add(
@@ -228,7 +220,7 @@ export function projectGraph(
         },
       });
   }
-  if (notation === "chen") {
+  {
     const attrs = (list: Attribute[], parentId: string, ownerId: string) => {
       const parent = boxes.find((b) => b.id === parentId);
       if (!parent) return;
@@ -268,7 +260,8 @@ export function projectGraph(
           attrs(a.compositeChildren, a.id, ownerId);
       });
     };
-    for (const e of graph.entities) attrs(e.attributes, e.id, e.id);
+    if (notation === "chen")
+      for (const e of graph.entities) attrs(e.attributes, e.id, e.id);
     for (const r of graph.relationships)
       if (nodes.some((n) => n.id === r.id)) attrs(r.attributes, r.id, r.id);
   }
@@ -385,6 +378,7 @@ export function projectGraph(
     }
   }
   const previous: ReturnType<typeof route>[] = [];
+  const labelBoxes: Box[] = [];
   for (const edge of edges) {
     const a = map.get(edge.source),
       b = map.get(edge.target);
@@ -396,11 +390,48 @@ export function projectGraph(
       portPoint(b, tp),
       sp.side,
       tp.side,
-      boxes,
+      [...boxes, ...labelBoxes],
       previous,
     );
-    previous.push(points);
+    // Diamond attachments meet the polygon instead of stopping at its bounding box.
+    const diamondAnchor = (box: Box, port: Port) => {
+      const p = portPoint(box, port);
+      if (!nodes.some((n) => n.id === box.id && n.type === "relationship"))
+        return p;
+      if (port.side === "left" || port.side === "right")
+        p.x =
+          box.x +
+          box.width / 2 +
+          (((port.side === "right" ? 1 : -1) * box.width) / 2) *
+            (1 - Math.abs(2 * port.fraction - 1));
+      else
+        p.y =
+          box.y +
+          box.height / 2 +
+          (((port.side === "bottom" ? 1 : -1) * box.height) / 2) *
+            (1 - Math.abs(2 * port.fraction - 1));
+      return p;
+    };
+    points[0] = diamondAnchor(a, sp);
+    points[points.length - 1] = diamondAnchor(b, tp);
     edge.data = { ...edge.data!, points };
+    if (!edge.data.attributeLink && edge.data.label) {
+      const anchor = labelPoint(points);
+      const box = placeLabel(
+        "label-" + edge.id,
+        anchor,
+        boxes,
+        labelBoxes,
+        previous,
+      );
+      labelBoxes.push(box);
+      edge.data.labelPosition = {
+        x: box.x + box.width / 2,
+        y: box.y + box.height / 2,
+      };
+      edge.data.labelAnchor = anchor;
+    }
+    previous.push(points);
   }
   for (const set of graph.entitySets ?? []) {
     const ids = new Set([...set.entityIds, set.relationshipId]);

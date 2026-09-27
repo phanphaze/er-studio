@@ -3,6 +3,7 @@ import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { ConnectionPorts } from "./ConnectionPorts";
 import type { Port } from "@/lib/layout/geometry";
 import { useERStore } from "@/store/useERStore";
+import { AttributeNestGrip } from "./AttributeNestGrip";
 import { AttributeMenu } from "@/components/ui/attribute-menu";
 import type { Attribute } from "@/lib/ast/types";
 export function AttributeNode({
@@ -45,6 +46,7 @@ export function AttributeNode({
         >
           {a.name}
         </span>
+        <AttributeNestGrip ownerId={data.ownerId} attributeId={a.id} />
         <Handle id="out" type="source" position={Position.Top} />
       </div>
     </AttributeMenu>

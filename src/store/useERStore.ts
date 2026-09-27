@@ -14,7 +14,11 @@ import type {
 } from "@/lib/ast/types";
 import { deleteItems } from "@/lib/ast/entitySets";
 import { attribute, seedGraph } from "./seed";
-import { attributeRows, attributeSiblings } from "@/lib/ast/attributes";
+import {
+  attributeRows,
+  attributeSiblings,
+  changeAttributeDepth,
+} from "@/lib/ast/attributes";
 export interface ERState {
   insertionPosition?: () => Point;
   selectedIds: string[];
@@ -46,6 +50,11 @@ export interface ERState {
   deleteEntity: (id: string) => void;
   duplicateEntity: (id: string) => void;
   addAttribute: (entityId: string, parentId?: string) => void;
+  changeAttributeDepth: (
+    ownerId: string,
+    attributeId: string,
+    direction: "indent" | "outdent",
+  ) => void;
   updateAttribute: (
     entityId: string,
     id: string,
@@ -327,7 +336,16 @@ export const useERStore = create<ERState>()(
       });
       get().setSelection({ kind: "entity", id: newId });
     },
-    addAttribute: (entityId, parentId) =>
+    changeAttributeDepth: (ownerId, attributeId, direction) =>
+      get().commit((g) => {
+        const owner = [...g.entities, ...g.relationships].find(
+          (o) => o.id === ownerId,
+        );
+        if (owner)
+          changeAttributeDepth(owner.attributes, attributeId, direction);
+      }),
+    addAttribute: (entityId, parentId) => {
+      const newId = crypto.randomUUID();
       get().commit((g) => {
         const e =
           g.entities.find((e) => e.id === entityId) ??
@@ -345,8 +363,10 @@ export const useERStore = create<ERState>()(
         let name = "column";
         let i = 2;
         while (list.some((a) => a.name === name)) name = "column_" + i++;
-        list.push(attribute(crypto.randomUUID(), name));
-      }),
+        list.push(attribute(newId, name));
+      });
+      get().focusAttribute(entityId, newId);
+    },
     updateAttribute: (entityId, id, patch) =>
       get().commit((g) => {
         const e =

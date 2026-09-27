@@ -21,6 +21,10 @@ export function ChenEdge(props: EdgeProps) {
     x = p.x;
     y = p.y;
   }
+  if (d.labelPosition) {
+    x = d.labelPosition.x;
+    y = d.labelPosition.y;
+  }
   const select = () => {
     if (d.relationshipId)
       useERStore
@@ -34,6 +38,19 @@ export function ChenEdge(props: EdgeProps) {
   const stroke = props.selected ? "var(--accent)" : "var(--edge-color,#8993a8)";
   return (
     <>
+      {d.labelAnchor &&
+        d.labelPosition &&
+        Math.hypot(x - d.labelAnchor.x, y - d.labelAnchor.y) > 12 && (
+          <path
+            d={`M ${d.labelAnchor.x} ${d.labelAnchor.y} L ${x} ${y}`}
+            stroke="var(--edge-color)"
+            strokeWidth={1}
+            strokeDasharray="3 4"
+            opacity={0.5}
+            fill="none"
+            pointerEvents="none"
+          />
+        )}
       {marked && <CardinalityMarks id={props.id} start={d.start} end={d.end} />}
       <BaseEdge
         {...props}

@@ -27,6 +27,8 @@ export interface ERLinkData extends Record<string, unknown> {
   attributeLink?: boolean;
   cardinality?: string;
   points?: Point[];
+  labelPosition?: Point;
+  labelAnchor?: Point;
 }
 export const bounds = participationLabel;
 export function CrowsFootEdge(props: EdgeProps) {
@@ -45,8 +47,25 @@ export function CrowsFootEdge(props: EdgeProps) {
     x = label.x;
     y = label.y;
   }
+  if (d.labelPosition) {
+    x = d.labelPosition.x;
+    y = d.labelPosition.y;
+  }
   return (
     <>
+      {d.labelAnchor &&
+        d.labelPosition &&
+        Math.hypot(x - d.labelAnchor.x, y - d.labelAnchor.y) > 12 && (
+          <path
+            d={`M ${d.labelAnchor.x} ${d.labelAnchor.y} L ${x} ${y}`}
+            stroke="var(--edge-color)"
+            strokeWidth={1}
+            strokeDasharray="3 4"
+            opacity={0.5}
+            fill="none"
+            pointerEvents="none"
+          />
+        )}
       <CardinalityMarks
         id={props.id}
         start={d.start}

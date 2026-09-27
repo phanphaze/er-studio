@@ -1,10 +1,11 @@
 "use client";
-import { memo, useEffect, useLayoutEffect, useRef } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Handle,
   NodeToolbar,
   Position,
   useUpdateNodeInternals,
+  useReactFlow,
   type Node,
   type NodeProps,
 } from "@xyflow/react";
@@ -47,7 +48,33 @@ export const EntityNode = memo(function EntityNode({
   const rows = attributeRows(entity.attributes);
   const root = useRef<HTMLDivElement>(null);
   const previousTops = useRef(new Map<string, number>());
-  const dragged = useRef<string | null>(null);
+  const flow = useReactFlow();
+  const [preview, setPreview] = useState<{
+    id: string;
+    direction: "indent" | "outdent" | null;
+    hint: string;
+  } | null>(null);
+  const gesture = useRef<{
+    id: string;
+    x: number;
+    y: number;
+    direction: "indent" | "outdent" | null;
+  } | null>(null);
+  const addField = () => {
+    useERStore.getState().endTransaction();
+    useERStore.getState().addAttribute(id);
+    const added = useERStore.getState().attributeFocus?.attributeId;
+    requestAnimationFrame(() => {
+      const row = Array.from(
+        root.current?.querySelectorAll<HTMLElement>("[data-row-id]") ?? [],
+      ).find((el) => el.dataset.rowId === added);
+      const input = row?.querySelector("textarea");
+      if (notation !== "chen") {
+        input?.focus();
+        input?.select();
+      }
+    });
+  };
   const nodeWidth = Math.min(
     680,
     Math.max(
@@ -110,11 +137,7 @@ export const EntityNode = memo(function EntityNode({
         position={Position.Top}
         className="floating-actions"
       >
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => useERStore.getState().addAttribute(id)}
-        >
+        <Button variant="ghost" size="sm" onClick={addField}>
           <Plus size={15} /> Attribute
         </Button>
         <Button
@@ -172,7 +195,23 @@ export const EntityNode = memo(function EntityNode({
             key={a.id}
             data-row-id={a.id}
             className={`attribute-row nodrag ${a.isDerived ? "derived" : ""} ${focus?.attributeId === a.id ? "focused-attribute-row" : ""}`}
-            style={{ paddingLeft: 4 + depth * 15 }}
+            style={{
+              paddingLeft: Math.max(
+                4,
+                4 +
+                  depth * 20 +
+                  (preview?.id === a.id
+                    ? preview.direction === "indent"
+                      ? 20
+                      : preview.direction === "outdent"
+                        ? -20
+                        : 0
+                    : 0),
+              ),
+              ...(preview?.id === a.id
+                ? { background: "var(--accent-soft)" }
+                : {}),
+            }}
             onClick={(e) => {
               e.stopPropagation();
               useERStore.getState().focusAttribute(id, a.id);
@@ -181,47 +220,107 @@ export const EntityNode = memo(function EntityNode({
               if (!e.currentTarget.contains(e.relatedTarget))
                 useERStore.getState().focusAttribute(id, a.id);
             }}
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const from = dragged.current;
-              if (!from || from === a.id) return;
-              const source = rows.find((row) => row.attribute.id === from);
-              if (!source || source.parentId !== parentId) return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              const mid = rect.top + rect.height / 2;
-              if (
-                (source.index < i && e.clientY < mid) ||
-                (source.index > i && e.clientY > mid)
-              )
-                return;
-              useERStore.getState().reorderAttribute(id, from, i);
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              const from = e.dataTransfer.getData("application/er-attribute");
-              e.stopPropagation();
-              const source = rows.find((row) => row.attribute.id === from);
-              if (source && source.parentId === parentId)
-                useERStore.getState().reorderAttribute(id, from, i);
-            }}
           >
             <button
               className="attribute-grip nodrag"
-              draggable
-              aria-label={`Move ${a.name}; use arrow keys to reorder`}
-              onDragStart={(e) => {
-                dragged.current = a.id;
-                e.dataTransfer.setData("application/er-attribute", a.id);
-                e.dataTransfer.effectAllowed = "move";
+              style={{ touchAction: "none" }}
+              aria-label={`Move ${a.name}; drag right to nest, left to unnest; arrow keys also work`}
+              onPointerDown={(e) => {
+                if (e.button !== 0) return;
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.setPointerCapture(e.pointerId);
                 useERStore.getState().endTransaction();
                 begin();
+                gesture.current = {
+                  id: a.id,
+                  x: e.clientX,
+                  y: e.clientY,
+                  direction: null,
+                };
               }}
-              onDragEnd={() => {
-                dragged.current = null;
+              onPointerMove={(e) => {
+                const g = gesture.current;
+                if (!g) return;
+                const dx = (e.clientX - g.x) / flow.getZoom();
+                const owner = useERStore
+                  .getState()
+                  .graph.entities.find((n) => n.id === id)!;
+                const current = attributeRows(owner.attributes).find(
+                  (r) => r.attribute.id === g.id,
+                )!;
+                const siblings = attributeRows(owner.attributes).filter(
+                  (r) => r.parentId === current.parentId,
+                );
+                const previous = siblings.find(
+                  (r) => r.index === current.index - 1,
+                );
+                g.direction =
+                  dx > 32 && previous
+                    ? "indent"
+                    : dx < -32 && current.parentId
+                      ? "outdent"
+                      : null;
+                setPreview({
+                  id: g.id,
+                  direction: g.direction,
+                  hint:
+                    g.direction === "indent"
+                      ? `Nest under ${previous!.attribute.name}`
+                      : g.direction === "outdent"
+                        ? "Move out one level"
+                        : "Drag right to nest · left to unnest",
+                });
+                if (g.direction || Math.abs(dx) > 24) return;
+                const target = Array.from(
+                  root.current?.querySelectorAll<HTMLElement>(
+                    "[data-row-id]",
+                  ) ?? [],
+                ).find((el) => {
+                  const r = el.getBoundingClientRect();
+                  return e.clientY >= r.top && e.clientY <= r.bottom;
+                });
+                const row = attributeRows(owner.attributes).find(
+                  (r) => r.attribute.id === target?.dataset.rowId,
+                );
+                if (
+                  row &&
+                  row.parentId === current.parentId &&
+                  row.index !== current.index
+                )
+                  useERStore.getState().reorderAttribute(id, g.id, row.index);
+              }}
+              onPointerUp={(e) => {
+                const g = gesture.current;
+                if (!g) return;
+                e.stopPropagation();
+                if (g.direction)
+                  useERStore
+                    .getState()
+                    .changeAttributeDepth(id, g.id, g.direction);
+                gesture.current = null;
+                setPreview(null);
+                end();
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              }}
+              onPointerCancel={() => {
+                gesture.current = null;
+                setPreview(null);
                 end();
               }}
               onKeyDown={(e) => {
+                if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  useERStore
+                    .getState()
+                    .changeAttributeDepth(
+                      id,
+                      a.id,
+                      e.key === "ArrowRight" ? "indent" : "outdent",
+                    );
+                  return;
+                }
                 if (e.key === "ArrowUp" || e.key === "ArrowDown") {
                   e.preventDefault();
                   useERStore
@@ -236,6 +335,9 @@ export const EntityNode = memo(function EntityNode({
             >
               <GripVertical size={12} />
             </button>
+            {preview?.id === a.id && (
+              <span className="attribute-drag-hint">{preview.hint}</span>
+            )}
             <span
               className={`key-badge ${a.isPrimaryKey || a.isPartialKey ? "pk" : ""}`}
               title={
@@ -351,14 +453,14 @@ export const EntityNode = memo(function EntityNode({
           <span className="attribute-type">{c.type}</span>
         </div>
       ))}
-      <footer>
+      <footer className="entity-add-footer">
         <span>{rows.length} fields</span>
         <button
           className="nodrag"
-          onClick={() => useERStore.getState().addAttribute(id)}
+          onClick={addField}
           aria-label="Add attribute"
         >
-          <Plus size={14} /> Add field
+          <Plus size={14} /> Add attribute
         </button>
       </footer>
     </div>
