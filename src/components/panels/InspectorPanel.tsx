@@ -37,6 +37,7 @@ import {
   totalParticipation,
 } from "@/lib/ast/participation";
 import { EntityMultiplicityPanel } from "./EntityMultiplicityPanel";
+import { RelationalSchemaPanel } from "./RelationalSchemaPanel";
 import { SqlPreviewPanel } from "./SqlPreviewPanel";
 function TextField({
   label,
@@ -733,6 +734,7 @@ export function InspectorPanel() {
             {result.issues.filter((i) => i.severity === "error").length ||
               "Checks"}
           </TabsTrigger>
+          <TabsTrigger value="schema">Tables</TabsTrigger>
           <TabsTrigger value="sql">
             <Code2 size={15} /> SQL
           </TabsTrigger>
@@ -891,6 +893,9 @@ export function InspectorPanel() {
               </div>
             </div>
           ))}
+        </TabsContent>
+        <TabsContent value="schema" className="panel-scroll">
+          <RelationalSchemaPanel />
         </TabsContent>
         <TabsContent value="sql" className="sql-tab">
           <SqlPreviewPanel />

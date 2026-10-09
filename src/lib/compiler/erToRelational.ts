@@ -10,7 +10,10 @@ import type {
 export const quote = (s: string) => '"' + s.replaceAll('"', '""') + '"';
 const literal = (s: string) => "'" + s.replaceAll("'", "''") + "'";
 /** Deterministic graph lowering. No rendering or framework dependencies. */
-export function erToRelational(g: ERGraph): RelationalSchema {
+export function erToRelational(
+  g: ERGraph,
+  capture?: (step: number, tables: RelationalTable[]) => void,
+): RelationalSchema {
   const tables = new Map<string, RelationalTable>();
   const byEntity = new Map<string, RelationalTable>();
   const pending: { table: RelationalTable; attr: Attribute; prefix: string }[] =
@@ -233,6 +236,36 @@ export function erToRelational(g: ERGraph): RelationalSchema {
         `${s.name}: table-per-type ${s.disjointness}/${s.completeness} membership requires cross-table enforcement in application logic or constraint triggers.`,
       );
   }
+  const snapshot = (step: number, source = [...tables.values()]) =>
+    capture?.(
+      step,
+      structuredClone(source).sort((a, b) => a.name.localeCompare(b.name)),
+    );
+  const strongTables = new Set(
+    g.entities.filter((e) => e.type !== "weak").map((e) => byEntity.get(e.id)!),
+  );
+  snapshot(1, [...strongTables]);
+  snapshot(2);
+  let processedMultivalued = 0;
+  const expandMultivalued = () => {
+    while (processedMultivalued < pending.length) {
+      const { table, attr, prefix } = pending[processedMultivalued++];
+      const t = create(table.name + "_" + prefix + attr.name);
+      fk(t, table, table.name, false, true);
+      add(
+        t,
+        {
+          ...attr,
+          isMultivalued: false,
+          isPrimaryKey: true,
+          isNullable: false,
+        },
+        "",
+      );
+    }
+  };
+  expandMultivalued();
+  snapshot(3);
   for (const r of [...g.relationships].sort((a, b) =>
     a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
   )) {
@@ -314,16 +347,9 @@ export function erToRelational(g: ERGraph): RelationalSchema {
         `${r.name}: minimum participation on the referenced side needs cross-row enforcement; foreign keys enforce referencing-side participation only.`,
       );
   }
-  for (let i = 0; i < pending.length; i++) {
-    const { table, attr, prefix } = pending[i];
-    const t = create(table.name + "_" + prefix + attr.name);
-    fk(t, table, table.name, false, true);
-    add(
-      t,
-      { ...attr, isMultivalued: false, isPrimaryKey: true, isNullable: false },
-      "",
-    );
-  }
+  // Relationship-owned multivalued attributes become available in step 4.
+  expandMultivalued();
+  snapshot(4);
   for (const r of g.relationships)
     if (r.endpoints.some((p) => p.participation.min > 1))
       warnings.push(
@@ -340,6 +366,7 @@ export function erToRelational(g: ERGraph): RelationalSchema {
     if (new TextEncoder().encode(t.name).length > 63)
       throw Error(`Generated table name exceeds PostgreSQL limit: ${t.name}`);
   }
+  snapshot(5);
   return {
     tables: [...tables.values()].sort((a, b) =>
       a.name < b.name ? -1 : a.name > b.name ? 1 : 0,

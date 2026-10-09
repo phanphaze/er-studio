@@ -2582,3 +2582,51 @@ input[type="radio"] {
   right: 0;
   margin-top: 4px;
 }
+
+.panel-tabs {
+  flex-wrap: wrap;
+}
+.relational-report {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.relational-report article {
+  margin: 20px 0;
+}
+.relational-report h3 {
+  font-weight: 600;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.relational-report p {
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.relational-report table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.relational-report th,
+.relational-report td {
+  border: 1px solid #64748b70;
+  padding: 6px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.relational-report th {
+  background: var(--accent-soft);
+}
+.schema-report-dialog {
+  width: min(1000px, 95vw) !important;
+  max-width: 1000px !important;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+.schema-report-dialog .relational-report {
+  font-size: 14px;
+}
+.schema-report-dialog table {
+  font-size: 13px;
+}
