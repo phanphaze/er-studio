@@ -119,6 +119,7 @@ export function projectGraph(
     if (!a || !b) continue;
     const data: ERLinkData = {
       label: r.name,
+      color: r.color,
       start: a.participation,
       end: b.participation,
       identifying: r.type === "identifying",
@@ -129,19 +130,35 @@ export function projectGraph(
     {
       const ea = boxes.find((n) => n.id === a.entityId),
         eb = boxes.find((n) => n.id === b.entityId);
+      const relationWidth = Math.min(
+        300,
+        Math.max(170, r.name.length * 5 + 70),
+      );
+      const relationHeight = Math.max(
+        90,
+        Math.ceil(r.name.length / 20) * 22 + 48,
+      );
       add(
         {
           id: r.id,
           type: "relationship",
           position: r.position ?? {
-            x: ((ea?.x ?? 0) + (eb?.x ?? 500)) / 2 + 170,
-            y: ((ea?.y ?? 0) + (eb?.y ?? 0)) / 2 + 120,
+            x:
+              ((ea ? ea.x + ea.width / 2 : 0) +
+                (eb ? eb.x + eb.width / 2 : 500)) /
+                2 -
+              relationWidth / 2,
+            y:
+              ((ea ? ea.y + ea.height / 2 : 0) +
+                (eb ? eb.y + eb.height / 2 : 0)) /
+                2 -
+              relationHeight / 2,
           },
           data: { relationship: r },
           selected: selection?.id === r.id,
         },
-        Math.min(380, Math.max(240, r.name.length * 7 + 110)),
-        Math.max(150, Math.ceil(r.name.length / 22) * 26 + 80),
+        relationWidth,
+        relationHeight,
         true,
       );
       r.endpoints.forEach((p, i) => {
@@ -238,7 +255,9 @@ export function projectGraph(
             data: {
               attribute: a,
               ownerId,
-              ownerColor: graph.entities.find((e) => e.id === ownerId)?.color,
+              ownerColor:
+                graph.entities.find((e) => e.id === ownerId)?.color ??
+                graph.relationships.find((r) => r.id === ownerId)?.color,
             },
             draggable: true,
             selectable: true,

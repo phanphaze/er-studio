@@ -74,6 +74,7 @@ export interface RelationshipEndpoint {
 export type ReferentialAction =
   "CASCADE" | "RESTRICT" | "NO ACTION" | "SET NULL";
 export interface Relationship {
+  color?: string;
   id: ID;
   name: string;
   type: RelationshipType;

@@ -5,3 +5,6 @@ out
 .env*
 public/monaco
 dist
+
+# Local project database and generated API bundle
+.local/

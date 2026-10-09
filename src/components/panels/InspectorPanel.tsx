@@ -421,6 +421,11 @@ function RelationshipEditor({ r }: { r: Relationship }) {
         value={r.name}
         onChange={(name) => update({ name })}
       />
+      <EntityColorPicker
+        label="Relationship color"
+        value={r.color ?? "#ac94ca"}
+        onChange={(color) => update({ color })}
+      />
       <label className="field-label">
         Kind
         <select

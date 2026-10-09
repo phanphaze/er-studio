@@ -21,6 +21,7 @@ export function useProjects() {
   const [restoreAttempt, setRestoreAttempt] = useState(0);
   const [error, setError] = useState("");
   const locked = useRef(true);
+  const restoreCancelled = useRef(false);
   const dirty = graph !== savedGraph;
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -59,13 +60,14 @@ export function useProjects() {
   }, []);
   useEffect(() => {
     let cancelled = false;
+    restoreCancelled.current = false;
     locked.current = true;
     setBusy(true);
     setRestoring(true);
     setRestoreError("");
     void restoreProject(projectsAPI, lastProjectId())
       .then((result) => {
-        if (cancelled) return;
+        if (cancelled || restoreCancelled.current) return;
         setProjects(result.projects);
         if (result.current) load(result.current.graph, result.current);
         setRestoring(false);
@@ -73,7 +75,7 @@ export function useProjects() {
         setBusy(false);
       })
       .catch((cause: unknown) => {
-        if (!cancelled)
+        if (!cancelled && !restoreCancelled.current)
           setRestoreError(
             cause instanceof Error
               ? cause.message
@@ -155,6 +157,16 @@ export function useProjects() {
     restoring,
     restoreError,
     retryRestore: () => setRestoreAttempt((attempt) => attempt + 1),
+    continueWithoutStorage: () => {
+      restoreCancelled.current = true;
+      locked.current = false;
+      setBusy(false);
+      setRestoring(false);
+      setRestoreError("");
+      setError(
+        "Project storage is unavailable. You can edit and import diagrams; download a JSON backup to keep your changes.",
+      );
+    },
     current,
     loading,
     busy,

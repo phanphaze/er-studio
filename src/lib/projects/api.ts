@@ -10,7 +10,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     result = await response.json();
   } catch {
     throw Error(
-      "Project storage is unavailable. Your diagram is still open; retry or download a JSON backup.",
+      "Project storage is unavailable. Continue to the editor to import or export a JSON backup.",
     );
   }
   if (!response.ok) throw Error(result.error ?? "Project request failed");

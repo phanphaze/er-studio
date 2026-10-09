@@ -1,4 +1,5 @@
 "use client";
+import type { CSSProperties } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import type { Notation, Relationship } from "@/lib/ast/types";
 import type { Port } from "@/lib/layout/geometry";
@@ -19,6 +20,7 @@ export function RelationshipNode({
   const r = data.relationship;
   return (
     <div
+      style={{ "--relationship-color": r.color ?? "#ac94ca" } as CSSProperties}
       className={`relationship-card chen-diamond ${selected ? "is-selected" : ""}`}
     >
       <ConnectionPorts nodeId={id} ports={data.ports} />

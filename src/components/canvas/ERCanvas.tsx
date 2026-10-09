@@ -156,15 +156,12 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
   };
 
   const exportBounds = () => {
-    const nodes = flow
-      .getNodes()
-      .map((node) => ({
-        ...node,
-        width:
-          flow.getInternalNode(node.id)?.measured.width ?? node.width ?? 290,
-        height:
-          flow.getInternalNode(node.id)?.measured.height ?? node.height ?? 120,
-      }));
+    const nodes = flow.getNodes().map((node) => ({
+      ...node,
+      width: flow.getInternalNode(node.id)?.measured.width ?? node.width ?? 290,
+      height:
+        flow.getInternalNode(node.id)?.measured.height ?? node.height ?? 120,
+    }));
     if (!nodes.length) throw Error("Add an entity before exporting.");
     return getNodesBounds(nodes);
   };
@@ -414,6 +411,7 @@ function Canvas({ actionsRef }: { actionsRef: Ref<CanvasActions> }) {
             nodeColor={(n) =>
               (n.data.entity as { color: string } | undefined)?.color ??
               (n.data.ownerColor as string | undefined) ??
+              (n.data.relationship as { color?: string } | undefined)?.color ??
               (n.type === "relationship" ? "#ac94ca" : "#8b7aa7")
             }
             maskColor={

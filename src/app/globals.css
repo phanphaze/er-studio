@@ -2539,3 +2539,46 @@ input[type="radio"] {
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+
+/* Compact in-line relationship labels and matching double outlines. */
+.entity-weak {
+  border-color: var(--entity-color);
+  outline: 2px solid var(--entity-color);
+  outline-offset: 4px;
+}
+.diamond-shape,
+[data-mode="light"] .diamond-shape {
+  stroke: var(--relationship-color, #ac94ca);
+  stroke-width: 2;
+  fill: color-mix(
+    in srgb,
+    var(--relationship-color, #ac94ca) 12%,
+    var(--canvas-surface, #151a24)
+  );
+}
+.chen-diamond strong {
+  color: var(--relationship-color, #ac94ca);
+  font-size: 12px;
+  line-height: 1.2;
+}
+.edge-label,
+.chen-edge-label {
+  width: 160px;
+  max-width: 160px;
+  height: 32px;
+  max-height: 32px;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-size: 11px;
+  overflow: visible;
+  background: var(--canvas-surface, #151a24);
+}
+.edge-label .edge-actions {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+}

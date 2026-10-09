@@ -5,7 +5,11 @@ import {
   getSmoothStepPath,
   type EdgeProps,
 } from "@xyflow/react";
-import { CardinalityMarks, compactBounds } from "./CardinalityMarks";
+import {
+  CardinalityMarks,
+  inlineBounds,
+  compactBounds,
+} from "./CardinalityMarks";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useERStore } from "@/store/useERStore";
 import { ArrowLeftRight, Trash2 } from "lucide-react";
@@ -15,6 +19,7 @@ import type { Point } from "@/lib/ast/types";
 import type { Participation } from "@/lib/ast/types";
 export interface ERLinkData extends Record<string, unknown> {
   label: string;
+  color?: string;
   start: Participation;
   end: Participation;
   identifying: boolean;
@@ -58,7 +63,7 @@ export function CrowsFootEdge(props: EdgeProps) {
         Math.hypot(x - d.labelAnchor.x, y - d.labelAnchor.y) > 12 && (
           <path
             d={`M ${d.labelAnchor.x} ${d.labelAnchor.y} L ${x} ${y}`}
-            stroke="var(--edge-color)"
+            stroke={d.color ?? "var(--edge-color)"}
             strokeWidth={1}
             strokeDasharray="3 4"
             opacity={0.5}
@@ -66,7 +71,14 @@ export function CrowsFootEdge(props: EdgeProps) {
             pointerEvents="none"
           />
         )}
-      {marked && <CardinalityMarks id={props.id} start={d.start} end={d.end} />}
+      {marked && (
+        <CardinalityMarks
+          id={props.id}
+          start={d.start}
+          end={d.end}
+          color={d.color}
+        />
+      )}
       <BaseEdge
         {...props}
         interactionWidth={30}
@@ -76,7 +88,7 @@ export function CrowsFootEdge(props: EdgeProps) {
         style={{
           stroke: props.selected
             ? "var(--accent)"
-            : "var(--edge-color,#69758b)",
+            : (d.color ?? "var(--edge-color,#69758b)"),
           strokeWidth: 1.6,
           strokeDasharray: d.uml || d.identifying ? undefined : "6 4",
         }}
@@ -91,24 +103,15 @@ export function CrowsFootEdge(props: EdgeProps) {
                 .setSelection({ kind: "relationship", id: d.relationshipId });
           }}
           style={{
+            borderColor: d.color,
             pointerEvents: "all",
             cursor: "pointer",
             transform: `translate(-50%, -50%) translate(${x}px,${y}px)`,
           }}
         >
-          <strong>{d.label}</strong>
-          <span className="edge-cardinality">
-            {d.endpoint
-              ? compactBounds(d.start, display)
-              : display === "words" && !d.uml
-                ? d.cardinality
-                : `${compactBounds(d.start, display)} ↔ ${compactBounds(d.end, display)}`}
+          <span title={d.label}>
+            {d.endpoint ? inlineBounds(d.start, display) : d.label}
           </span>
-          {props.selected && (
-            <small>
-              {participationLabel(d.start)} ↔ {participationLabel(d.end)}
-            </small>
-          )}
           {props.selected && d.relationshipId && (
             <span className="edge-actions nodrag nopan">
               <button

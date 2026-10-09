@@ -2,6 +2,21 @@
 
 A modular Next.js 15 / React 19 / strict TypeScript ER modeler. The AST is framework-independent; React Flow is a projection, never the source of truth.
 
+## Local project storage
+
+Use Node.js 22.13 or newer. Run `npm ci` once and `npm run dev`.
+The dev command starts both Next.js and a local SQLite project API automatically.
+Open http://localhost:3000. Create projects, import JSON, and use Save or Ctrl+S;
+the last opened saved project is restored on reload.
+
+Saved projects live in `.local/projects.sqlite` in this repository and survive
+server restarts. The `.local` folder is excluded from Git. Local projects and
+hosted projects are separate: transfer diagrams using JSON export/import.
+For a full database backup, stop the dev server first and copy the `.local` folder.
+Do not delete this folder unless you intend to remove local projects.
+Set `PORT=3001 npm run dev` in Git Bash if port 3000 is occupied.
+The development server binds to the local computer only.
+
 ## Development
 
 ```bash

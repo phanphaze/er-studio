@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-local.mjs",
     "build": "next build && node scripts/build-worker.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

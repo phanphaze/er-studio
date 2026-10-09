@@ -10,7 +10,9 @@ export function CardinalityMarks({
   id,
   start,
   end,
+  color,
 }: {
+  color?: string;
   id: string;
   start: Participation;
   end: Participation;
@@ -27,7 +29,7 @@ export function CardinalityMarks({
       markerHeight="22"
       orient="auto-start-reverse"
       markerUnits="userSpaceOnUse"
-      stroke="var(--edge-color)"
+      stroke={color ?? "var(--edge-color)"}
       fill="none"
       strokeWidth="1.6"
     >
@@ -58,4 +60,16 @@ export function CardinalityMarks({
       {marker(end, "e")}
     </defs>
   );
+}
+
+export function inlineBounds(p: Participation, display: string) {
+  if (display !== "words") return compactBounds(p, display);
+  if (p.max === 1) return p.min === 0 ? "Zero or one" : "Exactly one";
+  if (p.max === "*")
+    return p.min === 0
+      ? "Zero or more"
+      : p.min === 1
+        ? "One or more"
+        : `At least ${p.min}`;
+  return p.min === p.max ? `Exactly ${p.min}` : `${p.min} to ${p.max}`;
 }

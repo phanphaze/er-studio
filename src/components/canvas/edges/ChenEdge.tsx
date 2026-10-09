@@ -6,7 +6,11 @@ import {
   type EdgeProps,
 } from "@xyflow/react";
 import { pathData, labelPoint } from "@/lib/layout/geometry";
-import { CardinalityMarks, compactBounds } from "./CardinalityMarks";
+import {
+  CardinalityMarks,
+  inlineBounds,
+  compactBounds,
+} from "./CardinalityMarks";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useERStore } from "@/store/useERStore";
 import type { ERLinkData } from "./CrowsFootEdge";
@@ -35,7 +39,9 @@ export function ChenEdge(props: EdgeProps) {
         .getState()
         .setSelection({ kind: "specialization", id: d.specializationId });
   };
-  const stroke = props.selected ? "var(--accent)" : "var(--edge-color,#8993a8)";
+  const stroke = props.selected
+    ? "var(--accent)"
+    : (d.color ?? "var(--edge-color,#8993a8)");
   return (
     <>
       {d.labelAnchor &&
@@ -43,7 +49,7 @@ export function ChenEdge(props: EdgeProps) {
         Math.hypot(x - d.labelAnchor.x, y - d.labelAnchor.y) > 12 && (
           <path
             d={`M ${d.labelAnchor.x} ${d.labelAnchor.y} L ${x} ${y}`}
-            stroke="var(--edge-color)"
+            stroke={d.color ?? "var(--edge-color)"}
             strokeWidth={1}
             strokeDasharray="3 4"
             opacity={0.5}
@@ -51,7 +57,14 @@ export function ChenEdge(props: EdgeProps) {
             pointerEvents="none"
           />
         )}
-      {marked && <CardinalityMarks id={props.id} start={d.start} end={d.end} />}
+      {marked && (
+        <CardinalityMarks
+          id={props.id}
+          start={d.start}
+          end={d.end}
+          color={d.color}
+        />
+      )}
       <BaseEdge
         {...props}
         markerStart={marked ? `url(#${props.id}-s)` : undefined}
@@ -75,12 +88,11 @@ export function ChenEdge(props: EdgeProps) {
             title={d.label}
             onClick={select}
             style={{
+              borderColor: d.color,
               transform: `translate(-50%, -50%) translate(${x}px,${y}px)`,
             }}
           >
-            {d.endpoint && display !== "words"
-              ? `${d.endpointName}: ${compactBounds(d.start, display)}`
-              : d.label}
+            {d.endpoint ? inlineBounds(d.start, display) : d.label}
           </button>
         </EdgeLabelRenderer>
       )}

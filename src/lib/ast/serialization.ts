@@ -94,6 +94,10 @@ const model = z.object({
         foreignKeyNames: z
           .record(z.string().max(256), z.string().min(1).max(63))
           .optional(),
+        color: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional(),
         ownerEntityId: id.optional(),
         foreignKeyEndpoint: z.number().int().min(0).max(1).optional(),
         onDelete: action,

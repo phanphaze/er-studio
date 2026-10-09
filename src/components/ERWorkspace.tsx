@@ -160,8 +160,18 @@ export function ERWorkspace() {
         <p role={projects.restoreError ? "alert" : "status"}>
           {projects.restoreError || "Restoring your last opened project."}
         </p>
+        <Button onClick={projects.continueWithoutStorage}>
+          Continue to editor
+        </Button>
+        <p className="muted">
+          Open the editor to import a JSON diagram or work on the example. When
+          project storage is unavailable, download JSON backups to save your
+          work.
+        </p>
         {projects.restoreError && (
-          <Button onClick={projects.retryRestore}>Try again</Button>
+          <Button variant="outline" onClick={projects.retryRestore}>
+            Try again
+          </Button>
         )}
       </main>
     );

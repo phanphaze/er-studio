@@ -25,20 +25,22 @@ const COLORS = [
 export function EntityColorPicker({
   value,
   onChange,
+  label = "Entity color",
 }: {
+  label?: string;
   value: string;
   onChange: (color: string) => void;
 }) {
   return (
     <fieldset className="entity-color-field">
-      <legend>Entity color</legend>
+      <legend>{label}</legend>
       <div className="color-picker">
         {COLORS.map(([name, color]) => (
           <button
             type="button"
             key={color}
             title={name}
-            aria-label={`${name} entity color`}
+            aria-label={`${name} ${label.toLowerCase()}`}
             aria-pressed={value.toLowerCase() === color}
             style={{ background: color }}
             onClick={() => onChange(color)}
